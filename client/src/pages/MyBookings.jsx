@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Loader2, Trash2, CheckCircle, XCircle, X, Users } from 'lucide-react';
-import axios from 'react-all';
-import axiosInstance from 'axios';
+import axios from 'axios';
 import Swal from 'sweetalert2';
 
 const MyBookings = ({ user }) => {
@@ -14,28 +13,48 @@ const MyBookings = ({ user }) => {
       ? `http://localhost:5000/bookings?tutorEmail=${user.email}`
       : `http://localhost:5000/bookings?studentEmail=${user.email}`;
       
-    axiosInstance.get(apiURL).then(res => {
+    axios.get(apiURL).then(res => {
       setBookings(res.data);
       setLoading(false);
     });
   };
 
   useEffect(() => {
-    fetchBookings();
+    if (user?.email) {
+      fetchBookings();
+    }
   }, [user]);
 
   const handleStatusUpdate = (id, newStatus) => {
     if (newStatus === 'denied') {
-      axiosInstance.delete(`http://localhost:5000/bookings/${id}`).then(() => {
+      axios.delete(`http://localhost:5000/bookings/${id}`).then(() => {
         Swal.fire('Vanish', 'Appointment slot rejected and vanished successfully.', 'success');
         fetchBookings();
       });
     } else {
-      axiosInstance.patch(`http://localhost:5000/bookings/${id}`, { status: newStatus }).then(() => {
+      axios.patch(`http://localhost:5000/bookings/${id}`, { status: newStatus }).then(() => {
         Swal.fire('Accepted', 'Student enrolled successfully inside active roster.', 'success');
         fetchBookings();
       });
     }
+  };
+
+  const handleCancelBooking = (id) => {
+    Swal.fire({
+      title: 'Are you sure?',
+      text: "Remove this appointment entry?",
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#EF4444',
+      confirmButtonText: 'Yes, cancel it!'
+    }).then((result) => {
+      if (result.isConfirmed) {
+        axios.delete(`http://localhost:5000/bookings/${id}`).then(() => {
+          Swal.fire('Deleted!', 'Appointment request cleared.', 'success');
+          fetchBookings();
+        });
+      }
+    });
   };
 
   const pendingRequests = bookings.filter(b => b.status === 'pending');
@@ -70,17 +89,20 @@ const MyBookings = ({ user }) => {
                 <tbody className="divide-y text-base font-bold text-slate-800">
                   {pendingRequests.map(b => (
                     <tr key={b._id} className="hover:bg-slate-50 transition-colors">
-                      <td className="px-6 py-4 font-black" onClick={() => setViewDetails(b)}>{user.role === 'tutor' ? b.studentName : b.tutorName}</td>
+                      <td className="px-6 py-4 font-black cursor-pointer text-slate-900" onClick={() => setViewDetails(b)}>
+                        {user.role === 'tutor' ? b.studentName : b.tutorName}
+                        <span className="block text-xs text-slate-400 font-bold">{user.role === 'tutor' ? b.studentEmail : b.tutorEmail}</span>
+                      </td>
                       <td className="px-6 py-4">{b.language}</td>
                       <td className="px-6 py-4 text-sm text-teal-600">{b.bookingDate} ({b.timeSlot})</td>
                       <td className="px-6 py-4 text-center">
                         {user.role === 'tutor' ? (
                           <div className="flex gap-2 justify-center">
-                            <button onClick={() => handleStatusUpdate(b._id, 'accepted')} className="p-2 bg-green-500 text-white rounded-xl"><CheckCircle className="w-4 h-4" /></button>
-                            <button onClick={() => handleStatusUpdate(b._id, 'denied')} className="p-2 bg-red-500 text-white rounded-xl"><XCircle className="w-4 h-4" /></button>
+                            <button onClick={() => handleStatusUpdate(b._id, 'accepted')} className="p-2 bg-green-500 text-white rounded-xl cursor-pointer"><CheckCircle className="w-4 h-4" /></button>
+                            <button onClick={() => handleStatusUpdate(b._id, 'denied')} className="p-2 bg-red-500 text-white rounded-xl cursor-pointer"><XCircle className="w-4 h-4" /></button>
                           </div>
                         ) : (
-                          <button onClick={() => handleStatusUpdate(b._id, 'denied')} className="px-3 py-1.5 bg-red-500 text-white rounded-xl text-xs">Cancel</button>
+                          <button onClick={() => handleCancelBooking(b._id)} className="px-3 py-1.5 bg-red-500 text-white rounded-xl text-xs shadow-sm cursor-pointer"><Trash2 className="w-3.5 h-3.5 inline mr-1" /> Cancel</button>
                         )}
                       </td>
                     </tr>
@@ -120,8 +142,14 @@ const MyBookings = ({ user }) => {
         <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-md flex justify-center items-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-8 relative border-4 border-slate-800">
             <button onClick={() => setViewDetails(null)} className="absolute top-4 right-4 text-red-600 bg-red-50 p-2 rounded-full border-2 border-red-500 cursor-pointer shadow-md"><X className="w-6 h-6 stroke-[4]" /></button>
-            <h3 className="text-2xl font-black text-slate-900 mb-4">Itinerary Curricular dossier</h3>
-            <p className="text-base font-bold text-slate-700 leading-relaxed border-l-4 border-teal-500 pl-4">{viewDetails.tutorDescription || 'Course schedule syllabus notes configured successfully.'}</p>
+            <h3 className="text-2xl font-black text-slate-900 mb-4">Itinerary Curricular Dossier</h3>
+            <div className="bg-slate-50 border p-4 rounded-xl font-bold text-slate-800 space-y-2 text-base mb-4">
+              <p><span className="text-teal-700 font-black">Curriculum:</span> {viewDetails.language}</p>
+              <p><span className="text-teal-700 font-black">Schedule Frame:</span> {viewDetails.bookingDate} ({viewDetails.timeSlot})</p>
+              <p><span className="text-teal-700 font-black">Price Value:</span> {viewDetails.currency === 'BDT' ? '৳' : '$'}{viewDetails.price} / {viewDetails.feeType}</p>
+            </div>
+            <h4 className="text-sm font-black text-slate-900 uppercase tracking-widest text-teal-700 mb-1">Itinerary Syllabus Notes</h4>
+            <p className="text-lg font-bold text-slate-800 leading-relaxed border-l-4 border-teal-500 pl-4">{viewDetails.tutorDescription || 'Course schedule syllabus notes configured successfully.'}</p>
           </div>
         </div>
       )}
