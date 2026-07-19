@@ -1,11 +1,27 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import Swal from 'sweetalert2';
 
-const Auth = ({ setUser, setActiveTab, redirectTarget, setRedirectTarget, fallbackTab, customRole }) => {
+const Auth = ({ setUser, setActiveTab, redirectTarget, setRedirectTarget, fallbackTab }) => {
   const [isSignUp, setIsSignUp] = useState(false);
   const [gender, setGender] = useState('male');
-  const [role, setRole] = useState(customRole || 'student');
+  const [role, setRole] = useState('student');
+  const [emailInput, setEmailInput] = useState('');
+  const [passwordInput, setPasswordInput] = useState('');
+
+  // ইমেলের প্রথম ২/৩টি ক্যারেক্টার মিললে লোকাল ডেটা পুট করার মেকানিজম
+  useEffect(() => {
+    if (!isSignUp && emailInput.length >= 2) {
+      const savedCredentials = localStorage.getItem('mediqueue_vault');
+      if (savedCredentials) {
+        const { email, password } = JSON.parse(savedCredentials);
+        if (email.toLowerCase().startsWith(emailInput.toLowerCase())) {
+          setEmailInput(email);
+          setPasswordInput(password);
+        }
+      }
+    }
+  }, [emailInput, isSignUp]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -14,19 +30,30 @@ const Auth = ({ setUser, setActiveTab, redirectTarget, setRedirectTarget, fallba
     const password = form.password.value;
     const name = isSignUp ? form.name.value : '';
     
-    // লোকাল ফোল্ডার ইমেজ লিংক এসাইনমেন্ট
     let defaultAvatar = gender === 'female' ? '/female-avatar.jpg' : '/male-avatar.jpg';
-    const userData = { name, email, password, role, gender, image: isSignUp ? defaultAvatar : '' };
+    const userData = { name, email, password, role, gender, image: defaultAvatar };
 
     try {
       if (isSignUp) {
         const res = await axios.post('http://localhost:5000/users/signup', userData);
         if (res.status === 201) {
-          Swal.fire('Success', 'Account registered successfully! Please sign in.', 'success');
-          setIsSignUp(false);
+          Swal.fire({
+            title: 'Remember Password?',
+            text: "Would you like to securely store credentials on this local device?",
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#0D9488',
+            confirmButtonText: 'Yes, Save Securely',
+            cancelButtonText: 'No, Cancel'
+          }).then((result) => {
+            if (result.isConfirmed) {
+              localStorage.setItem('mediqueue_vault', JSON.stringify({ email, password }));
+            }
+            setIsSignUp(false);
+          });
         }
       } else {
-        const res = await axios.post('http://localhost:5000/users/signin', { email, password });
+        const res = await axios.post('http://localhost:5000/users/signin', { email: emailInput, password: passwordInput });
         if (res.data.email) {
           setUser(res.data);
           Swal.fire('Welcome', `Successfully authenticated!`, 'success');
@@ -53,12 +80,12 @@ const Auth = ({ setUser, setActiveTab, redirectTarget, setRedirectTarget, fallba
         <h2 className="text-3xl font-black text-slate-900 text-center mb-6">
           {isSignUp ? 'Create Premium Account' : 'Welcome Back'}
         </h2>
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4" autoComplete="off">
           {isSignUp && (
             <>
               <div>
                 <label className="block text-sm font-black text-slate-800 mb-1">Full Name</label>
-                <input type="text" name="name" required className="w-full px-4 py-2.5 border border-slate-300 rounded-xl font-bold" />
+                <input type="text" name="name" required autoComplete="off" className="w-full px-4 py-2.5 border border-slate-300 rounded-xl font-bold" />
               </div>
               <div>
                 <label className="block text-sm font-black text-slate-800 mb-1">Gender Specification</label>
@@ -71,11 +98,27 @@ const Auth = ({ setUser, setActiveTab, redirectTarget, setRedirectTarget, fallba
           )}
           <div>
             <label className="block text-sm font-black text-slate-800 mb-1">Email Address</label>
-            <input type="email" name="email" required className="w-full px-4 py-2.5 border border-slate-300 rounded-xl font-bold" />
+            <input 
+              type="email" 
+              name="email" 
+              required 
+              autoComplete="off"
+              value={emailInput}
+              onChange={(e) => setEmailInput(e.target.value)}
+              className="w-full px-4 py-2.5 border border-slate-300 rounded-xl font-bold" 
+            />
           </div>
           <div>
             <label className="block text-sm font-black text-slate-800 mb-1">Password</label>
-            <input type="password" name="password" required className="w-full px-4 py-2.5 border border-slate-300 rounded-xl font-bold" />
+            <input 
+              type="password" 
+              name="password" 
+              required 
+              autoComplete="off"
+              value={passwordInput}
+              onChange={(e) => setPasswordInput(e.target.value)}
+              className="w-full px-4 py-2.5 border border-slate-300 rounded-xl font-bold" 
+            />
           </div>
 
           {isSignUp && (

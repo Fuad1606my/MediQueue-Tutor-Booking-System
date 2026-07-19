@@ -1,14 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import Swal from 'sweetalert2';
-import { Camera, X, RefreshCw, Trash2 } from 'lucide-react';
+import { Camera, X, RefreshCw } from 'lucide-react';
 
 const Profile = ({ user, setUser }) => {
   const [loading, setLoading] = useState(false);
   const [enrolled, setEnrolled] = useState([]);
   const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
   const [imagePreview, setImagePreview] = useState(user.image || '');
-  const [imageType, setImageType] = useState('url');
 
   useEffect(() => {
     if (user?.role === 'student') {
@@ -29,14 +28,11 @@ const Profile = ({ user, setUser }) => {
 
   const handleAvatarUpdateSubmit = async (e) => {
     e.preventDefault();
-    const finalImage = imageType === 'url' ? e.target.imageUrl.value : imagePreview;
-    
-    if(!finalImage) {
-      Swal.fire('Error', 'Please provide a valid image target.', 'error');
+    if (!imagePreview) {
+      Swal.fire('Error', 'Please choose a valid local image file first.', 'error');
       return;
     }
-
-    updateProfileDatabase({ ...user, image: finalImage });
+    updateProfileDatabase({ ...user, image: imagePreview });
     setIsAvatarModalOpen(false);
   };
 
@@ -75,7 +71,7 @@ const Profile = ({ user, setUser }) => {
     try {
       await axios.put('http://localhost:5000/users/profile', profileData);
       setUser(profileData);
-      Swal.fire('Success', 'Profile data updated!', 'success');
+      Swal.fire('Success', 'Profile parameters saved!', 'success');
     } catch (error) {
       Swal.fire('Error', 'Update processing failed.', 'error');
     } finally {
@@ -125,7 +121,7 @@ const Profile = ({ user, setUser }) => {
         </form>
       </div>
 
-      {/* --- অ্যাডভান্সড প্রোফাইল ইমেজ মোডাল অ্যান্ড ম্যানেজার পপ-আপ --- */}
+      {/* --- পিওর ডিভাইস আপলোডার ম্যানেজার পপ-আপ মডাল --- */}
       {isAvatarModalOpen && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm flex justify-center items-center z-50 p-4">
           <div className="bg-white rounded-3xl p-8 max-w-md w-full border-4 border-slate-900 relative space-y-6">
@@ -136,26 +132,28 @@ const Profile = ({ user, setUser }) => {
             
             <div className="flex justify-center bg-slate-50 p-4 rounded-2xl border shadow-inner relative">
               <img src={imagePreview} alt="Preview Avatar" className="w-44 h-44 rounded-full object-cover border-4 border-teal-500 shadow-md bg-white" />
-              <button type="button" onClick={handleAvatarDelete} className="absolute bottom-6 right-28 bg-red-500 hover:bg-red-600 text-white p-2 rounded-full border border-white cursor-pointer shadow-md" title="Delete Avatar to Default">
-                <Trash2 className="w-4 h-4" />
-              </button>
             </div>
 
             <form onSubmit={handleAvatarUpdateSubmit} className="space-y-4">
-              <div className="flex bg-slate-100 rounded-lg p-0.5 text-xs font-bold border">
-                <button type="button" onClick={() => setImageType('url')} className={`w-1/2 py-1.5 rounded-md ${imageType === 'url' ? 'bg-white text-teal-600 shadow-sm' : 'text-slate-600'}`}>Web Link URL</button>
-                <button type="button" onClick={() => setImageType('file')} className={`w-1/2 py-1.5 rounded-md ${imageType === 'file' ? 'bg-white text-teal-600 shadow-sm' : 'text-slate-600'}`}>Upload Device File</button>
+              <div className="p-4 border-2 border-dashed border-slate-300 rounded-2xl bg-slate-50 text-center hover:border-teal-500 transition-colors relative">
+                <input 
+                  type="file" 
+                  accept="image/*" 
+                  onChange={handleFileChange} 
+                  className="absolute inset-0 opacity-0 w-full h-full cursor-pointer" 
+                />
+                <p className="text-sm font-black text-slate-700">Click to Select Local Image File</p>
+                <p className="text-xs text-slate-400 mt-1">Supports JPEG, PNG up to 10MB</p>
               </div>
               
-              {imageType === 'url' ? (
-                <input type="url" name="imageUrl" placeholder="Paste image link URL here..." defaultValue={user.image ? user.image : ''} className="w-full px-4 py-2 border rounded-xl text-sm font-bold" />
-              ) : (
-                <input type="file" accept="image/*" onChange={handleFileChange} className="text-xs font-black" />
-              )}
-              
-              <button type="submit" className="w-full py-3 bg-teal-600 hover:bg-teal-700 text-white font-black rounded-xl text-sm shadow cursor-pointer uppercase tracking-wider flex justify-center items-center gap-2">
-                <RefreshCw className="w-4 h-4" /> Save Picture Changes
-              </button>
+              <div className="flex gap-2">
+                <button type="button" onClick={handleAvatarDelete} className="w-1/2 py-2.5 bg-red-100 border border-red-200 text-red-600 font-black text-sm rounded-xl cursor-pointer shadow-sm">
+                  Reset Default
+                </button>
+                <button type="submit" className="w-1/2 py-2.5 bg-teal-600 hover:bg-teal-700 text-white font-black rounded-xl text-sm shadow cursor-pointer uppercase tracking-wider flex justify-center items-center gap-2">
+                  <RefreshCw className="w-4 h-4" /> Save Picture
+                </button>
+              </div>
             </form>
           </div>
         </div>
