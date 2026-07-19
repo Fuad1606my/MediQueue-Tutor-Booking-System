@@ -79,7 +79,7 @@ app.put('/users/profile', async (req, res) => {
   }
 });
 
-// Subjects/Tutors Management
+// Subjects Management
 app.post('/tutors', async (req, res) => {
   try {
     const result = await tutorsCollection.insertOne(req.body);

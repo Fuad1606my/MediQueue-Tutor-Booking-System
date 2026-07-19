@@ -7,6 +7,7 @@ const Auth = ({ setUser, setActiveTab, redirectTarget, setRedirectTarget, fallba
   const [gender, setGender] = useState('male');
   const [role, setRole] = useState(customRole || 'student');
   const [imagePreview, setImagePreview] = useState('');
+  const [imageType, setImageType] = useState('url');
 
   const handleFileChange = (e) => {
     const file = e.target.files[0];
@@ -23,10 +24,16 @@ const Auth = ({ setUser, setActiveTab, redirectTarget, setRedirectTarget, fallba
     const email = form.email.value;
     const password = form.password.value;
     const name = isSignUp ? form.name.value : '';
-    const image = isSignUp ? (form.imageType?.value === 'url' ? form.imageUrl.value : imagePreview) : '';
+    
+    let defaultAvatar = gender === 'female' 
+      ? 'https://i.ibb.co.com/zWzH4xG/female-avatar.png' 
+      : 'https://i.ibb.co.com/mC384Yx/male-avatar.png';
+      
+    let image = isSignUp ? (imageType === 'url' ? form.imageUrl?.value : imagePreview) : '';
+    if (isSignUp && !image) image = defaultAvatar;
 
     if (isSignUp && (customRole === 'tutor' || role === 'tutor') && !image) {
-      Swal.fire('Required', 'Tutor profiles must contain a valid picture uploaded.', 'error');
+      Swal.fire('Required', 'Tutor profiles must contain a valid display image.', 'error');
       return;
     }
 
@@ -101,14 +108,17 @@ const Auth = ({ setUser, setActiveTab, redirectTarget, setRedirectTarget, fallba
 
           {isSignUp && (role === 'tutor' || customRole === 'tutor') && (
             <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2">
-              <label className="block text-xs font-black text-slate-700 uppercase">Tutor Avatar Upload (Required)</label>
-              <select name="imageType" className="w-full p-2 border border-slate-300 text-xs font-bold rounded-lg mb-2 bg-white">
-                <option value="url">Web URL Image Link</option>
-                <option value="file">Upload From Device</option>
-              </select>
-              <input type="url" name="imageUrl" placeholder="Image URL link..." className="w-full px-3 py-2 border text-sm rounded-xl mb-2" />
-              <input type="file" accept="image/*" onChange={handleFileChange} className="text-xs" />
-              {imagePreview && <img src={imagePreview} className="w-14 h-14 object-cover rounded-xl mt-2 border border-teal-500" />}
+              <label className="block text-xs font-black text-slate-700 uppercase">Tutor Avatar Source</label>
+              <div className="flex bg-slate-200 rounded-lg p-0.5 text-xs font-bold mb-2">
+                <button type="button" onClick={() => setImageType('url')} className={`w-1/2 py-1 rounded-md ${imageType === 'url' ? 'bg-white text-teal-600 shadow-sm' : 'text-slate-600'}`}>Web URL</button>
+                <button type="button" onClick={() => setImageType('file')} className={`w-1/2 py-1 rounded-md ${imageType === 'file' ? 'bg-white text-teal-600 shadow-sm' : 'text-slate-600'}`}>Upload File</button>
+              </div>
+              {imageType === 'url' ? (
+                <input type="url" name="imageUrl" placeholder="Image URL link..." className="w-full px-3 py-2 border text-sm rounded-xl" />
+              ) : (
+                <input type="file" accept="image/*" onChange={handleFileChange} className="text-xs" />
+              )}
+              {imagePreview && <img src={imagePreview} alt="" className="w-14 h-14 object-cover rounded-xl mt-2 border border-teal-500" />}
             </div>
           )}
 

@@ -31,7 +31,7 @@ const AddTutor = ({ user }) => {
     const tutorData = {
       name: user.name,
       email: user.email,
-      image: user.image || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150',
+      image: user.image || (user.gender === 'female' ? 'https://i.ibb.co.com/zWzH4xG/female-avatar.png' : 'https://i.ibb.co.com/mC384Yx/male-avatar.png'),
       language: form.language.value,
       price: parseFloat(form.price.value),
       currency,
@@ -86,8 +86,8 @@ const AddTutor = ({ user }) => {
         <form onSubmit={handleAddTutor} className="p-8 space-y-6">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             <div>
-              <label className="block text-sm font-black text-slate-800 mb-2">Subject/Language Focus</label>
-              <input type="text" name="language" placeholder="e.g., English, Mathematics" required defaultValue={editingTutor?.language || ''} className="w-full px-4 py-2.5 border border-slate-300 rounded-xl font-bold" />
+              <label className="block text-sm font-black text-slate-800 mb-2">Subject/Topic/Skill</label>
+              <input type="text" name="language" placeholder="e.g., English, Full-Stack Web Development" required defaultValue={editingTutor?.language || ''} className="w-full px-4 py-2.5 border border-slate-300 rounded-xl font-bold" />
             </div>
             <div>
               <label className="block text-sm font-black text-slate-800 mb-2">Time Slot Option (AM/PM Zone)</label>
@@ -101,6 +101,8 @@ const AddTutor = ({ user }) => {
                 <select value={feeType} onChange={(e) => setFeeType(e.target.value)} className="w-1/2 p-2.5 border border-slate-300 rounded-xl font-bold bg-white">
                   <option value="Hourly Rate">Hourly Rate</option>
                   <option value="Course Fee">Course Fee</option>
+                  <option value="Monthly Fee">Monthly Fee</option>
+                  <option value="Day-wise Fee">Day-wise Fee</option>
                 </select>
                 <select value={currency} onChange={(e) => setCurrency(e.target.value)} className="w-1/2 p-2.5 border border-slate-300 rounded-xl font-black bg-white">
                   <option value="BDT">৳ BDT</option>
@@ -114,7 +116,7 @@ const AddTutor = ({ user }) => {
             </div>
           </div>
           <div>
-            <label className="block text-sm font-black text-slate-800 mb-2">Course Track Details-Description</label>
+            <label className="block text-sm font-black text-slate-800 mb-2">Course Track Description</label>
             <textarea name="description" rows="4" required defaultValue={editingTutor?.description || ''} className="w-full p-4 border border-slate-300 rounded-xl font-bold resize-none"></textarea>
           </div>
           <button type="submit" disabled={loading} className="w-full py-4 rounded-xl text-white bg-slate-900 hover:bg-teal-600 font-black tracking-wide uppercase shadow-md cursor-pointer">

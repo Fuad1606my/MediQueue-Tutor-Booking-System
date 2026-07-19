@@ -1,14 +1,29 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import AddTutor from './pages/AddTutor';
 import FindTutors from './pages/FindTutors';
 import MyBookings from './pages/MyBookings';
 import Auth from './pages/Auth';
 import Profile from './pages/Profile';
+import axios from 'axios';
 
 function App() {
   const [activeTab, setActiveTab] = useState('find');
   const [user, setUser] = useState(null);
   const [redirectTarget, setRedirectTarget] = useState(null);
+  const [pendingCount, setPendingCount] = useState(0);
+
+  useEffect(() => {
+    if (user && user.role === 'tutor') {
+      axios.get(`http://localhost:5000/bookings?tutorEmail=${user.email}`)
+        .then(res => {
+          const pending = res.data.filter(b => b.status === 'pending');
+          setPendingCount(pending.length);
+        })
+        .catch(err => console.error(err));
+    } else {
+      setPendingCount(0);
+    }
+  }, [user, activeTab]);
 
   const handleTabClick = (targetTab) => {
     setActiveTab(targetTab);
@@ -20,8 +35,8 @@ function App() {
   const getUserAvatar = () => {
     if (user?.image) return user.image;
     return user?.gender === 'female' 
-      ? 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150' 
-      : 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150';
+      ? 'https://i.ibb.co.com/zWzH4xG/female-avatar.png' 
+      : 'https://i.ibb.co.com/mC384Yx/male-avatar.png';
   };
 
   return (
@@ -37,8 +52,13 @@ function App() {
                 <button onClick={() => handleTabClick('find')} className={`px-5 py-2.5 text-base font-black rounded-xl cursor-pointer transition-all ${activeTab === 'find' ? 'bg-teal-600 text-white shadow-md' : 'text-slate-700 hover:bg-slate-100'}`}>
                   Browse Tutors
                 </button>
-                <button onClick={() => handleTabClick('bookings')} className={`px-5 py-2.5 text-base font-black rounded-xl cursor-pointer transition-all ${activeTab === 'bookings' ? 'bg-teal-600 text-white shadow-md' : 'text-slate-700 hover:bg-slate-100'}`}>
+                <button onClick={() => handleTabClick('bookings')} className={`relative px-5 py-2.5 text-base font-black rounded-xl cursor-pointer transition-all ${activeTab === 'bookings' ? 'bg-teal-600 text-white shadow-md' : 'text-slate-700 hover:bg-slate-100'}`}>
                   My Bookings
+                  {user?.role === 'tutor' && pendingCount > 0 && (
+                    <span className="absolute -top-1 -right-2 bg-red-500 text-white font-black text-xs px-2 py-0.5 rounded-full shadow animate-pulse">
+                      {pendingCount}
+                    </span>
+                  )}
                 </button>
                 {user?.role === 'tutor' ? (
                   <button onClick={() => handleTabClick('add')} className={`px-5 py-2.5 text-base font-black rounded-xl cursor-pointer transition-all ${activeTab === 'add' ? 'bg-teal-600 text-white shadow-md' : 'text-slate-700 hover:bg-slate-100'}`}>
@@ -52,10 +72,7 @@ function App() {
                 
                 {user ? (
                   <div className="flex gap-3 items-center border-l pl-4 border-slate-300">
-                    <button onClick={() => handleTabClick('profile')} className={`flex items-center gap-2 px-3 py-2 text-sm font-black rounded-xl cursor-pointer transition-all ${activeTab === 'profile' ? 'bg-slate-900 text-white' : 'text-slate-800 bg-slate-100 border border-slate-200'}`}>
-                      <img src={getUserAvatar()} alt="" className="w-7 h-7 rounded-full object-cover border border-teal-500" />
-                      <span>Dashboard</span>
-                    </button>
+                    <img src={getUserAvatar()} alt="Profile" onClick={() => handleTabClick('profile')} className={`w-10 h-10 rounded-full object-cover border-2 shadow-sm cursor-pointer transition-all ${activeTab === 'profile' ? 'border-teal-600 scale-105' : 'border-slate-300 hover:border-teal-400'}`} />
                     <button onClick={() => { setUser(null); setActiveTab('find'); }} className="px-4 py-2 text-sm font-black rounded-xl bg-red-50 text-red-600 border border-red-200 cursor-pointer">
                       Logout
                     </button>
