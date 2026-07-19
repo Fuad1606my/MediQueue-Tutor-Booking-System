@@ -7,9 +7,12 @@ import Profile from './pages/Profile';
 import axios from 'axios';
 
 function App() {
-  const [activeTab, setActiveTab] = useState('find');
+  // রিফ্রেশ দিলেও যেন একই পেজ থাকে, সেজন্য sessionStorage দিয়ে ট্র্যাক করা হচ্ছে
+  const [activeTab, setActiveTab] = useState(() => {
+    return sessionStorage.getItem('mediqueue_active_tab') || 'find';
+  });
+  
   const [user, setUser] = useState(() => {
-    // রিফ্রেশ দিলেও যেন লগআউট না হয়, সেজন্য লোকাল স্টোরেজ থেকে সেশন রিকভারি
     const savedUser = localStorage.getItem('mediqueue_session');
     return savedUser ? JSON.parse(savedUser) : null;
   });
@@ -17,11 +20,31 @@ function App() {
   const [pendingCount, setPendingCount] = useState(0);
 
   useEffect(() => {
+    sessionStorage.setItem('mediqueue_active_tab', activeTab);
+  }, [activeTab]);
+
+  useEffect(() => {
     if (user) {
       localStorage.setItem('mediqueue_session', JSON.stringify(user));
     } else {
       localStorage.removeItem('mediqueue_session');
     }
+  }, [user]);
+
+  // ব্রাউজারের ব্যাক/ফরওয়ার্ড (Go Back) বাটন হ্যান্ডলিং লজিক
+  useEffect(() => {
+    const handlePopState = () => {
+      const currentTab = sessionStorage.getItem('mediqueue_active_tab') || 'find';
+      // যদি ইউজার লগআউট অবস্থায় থাকে এবং সিকিউর পেজে যাওয়ার চেষ্টা করে
+      if (!user && (currentTab === 'bookings' || currentTab === 'add' || currentTab === 'profile')) {
+        setActiveTab('auth');
+      } else {
+        setActiveTab(currentTab);
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
   }, [user]);
 
   useEffect(() => {
@@ -38,6 +61,8 @@ function App() {
   }, [user, activeTab]);
 
   const handleTabClick = (targetTab) => {
+    // ব্রাউজার হিস্ট্রি পুশ করা হচ্ছে যেন গো-ব্যাক বাটন ট্র্যাক রাখতে পারে
+    window.history.pushState(null, '', '');
     setActiveTab(targetTab);
     if (!user && (targetTab === 'bookings' || targetTab === 'add')) {
       setRedirectTarget({ type: 'tab', value: targetTab });
@@ -49,11 +74,14 @@ function App() {
     setUser(null);
     setActiveTab('find');
     setRedirectTarget(null);
-    // লগআউট করার পর 'Go Back' অপশন পুরোপুরি ব্লক করার জন্য হিস্ট্রি ক্লিয়ারিং উইন্ডো
+    sessionStorage.setItem('mediqueue_active_tab', 'find');
+
+    // লগআউট করার পর 'Go Back' অপশন পুরোপুরি লক করার সিকিউরিটি মেকানিজম
     window.history.pushState(null, document.title, window.location.href);
-    window.addEventListener('popstate', function (event) {
+    const blockBack = () => {
       window.history.pushState(null, document.title, window.location.href);
-    });
+    };
+    window.addEventListener('popstate', blockBack);
   };
 
   const getUserAvatar = () => {
@@ -100,7 +128,7 @@ function App() {
                     </button>
                   </div>
                 ) : (
-                  <button onClick={() => { setRedirectTarget(null); handleTabClick('auth'); }} className="px-5 py-2.5 text-base font-black rounded-xl bg-slate-900 text-white hover:bg-slate-800 cursor-pointer shadow-md">
+                  <button onClick={() => { setRedirectTarget(null); handleTabClick('auth'); }} className={`px-5 py-2.5 text-base font-black rounded-xl shadow-md cursor-pointer transition-all ${activeTab === 'auth' ? 'bg-teal-600 text-white' : 'bg-slate-900 text-white hover:bg-slate-800'}`}>
                     Login
                   </button>
                 )}
@@ -112,7 +140,7 @@ function App() {
         <main>
           {activeTab === 'find' && <FindTutors user={user} setActiveTab={setActiveTab} redirectTarget={redirectTarget} setRedirectTarget={setRedirectTarget} />}
           {activeTab === 'bookings' && (user ? <MyBookings user={user} /> : <Auth setUser={setUser} setActiveTab={setActiveTab} redirectTarget={redirectTarget} setRedirectTarget={setRedirectTarget} fallbackTab="bookings" />)}
-          {activeTab === 'add' && (user ? <AddTutor user={user} /> : <Auth setUser={setUser} setActiveTab={setActiveTab} redirectTarget={redirectTarget} setRedirectTarget={setRedirectTarget} fallbackTab="add" />)}
+          {activeTab === 'add' && (user ? <AddTutor user={user} /> : <Auth setUser={setUser} setActiveTab={setActiveTab} redirectTarget={redirectTarget} setRedirectTarget={setRedirectTarget} fallbackTab="add" customRole="tutor" />)}
           {activeTab === 'auth' && <Auth setUser={setUser} setActiveTab={setActiveTab} redirectTarget={redirectTarget} setRedirectTarget={setRedirectTarget} />}
           {activeTab === 'profile' && user && <Profile user={user} setUser={setUser} />}
         </main>
