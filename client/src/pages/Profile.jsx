@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import Swal from 'sweetalert2';
+import { Camera, X, RefreshCw, Trash2 } from 'lucide-react';
 
 const Profile = ({ user, setUser }) => {
   const [loading, setLoading] = useState(false);
   const [enrolled, setEnrolled] = useState([]);
+  const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
   const [imagePreview, setImagePreview] = useState(user.image || '');
   const [imageType, setImageType] = useState('url');
 
@@ -25,66 +27,92 @@ const Profile = ({ user, setUser }) => {
     }
   };
 
-  const handleUpdateProfile = async (e) => {
+  const handleAvatarUpdateSubmit = async (e) => {
+    e.preventDefault();
+    const finalImage = imageType === 'url' ? e.target.imageUrl.value : imagePreview;
+    
+    if(!finalImage) {
+      Swal.fire('Error', 'Please provide a valid image target.', 'error');
+      return;
+    }
+
+    updateProfileDatabase({ ...user, image: finalImage });
+    setIsAvatarModalOpen(false);
+  };
+
+  const handleAvatarDelete = () => {
+    let defaultAvatar = user.gender === 'female' ? '/female-avatar.jpg' : '/male-avatar.jpg';
+    setImagePreview(defaultAvatar);
+    updateProfileDatabase({ ...user, image: defaultAvatar });
+    setIsAvatarModalOpen(false);
+  };
+
+  const updateProfileDatabase = async (updatedFields) => {
+    try {
+      await axios.put('http://localhost:5000/users/profile', updatedFields);
+      setUser(updatedFields);
+      Swal.fire('Success', 'Profile avatar adjustment synchronized!', 'success');
+    } catch (err) {
+      Swal.fire('Error', 'Sync error occurred.', 'error');
+    }
+  };
+
+  const handleGeneralProfileSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     const form = e.target;
     
     const profileData = {
-      email: user.email,
+      ...user,
       name: form.name.value,
       address: form.address.value,
       contact: form.contact.value,
-      image: imageType === 'url' ? form.imageUrl.value : imagePreview,
-      gender: user.gender,
+      description: form.description.value,
       hourlyPay: user.role === 'tutor' ? form.hourlyPay.value : '',
       courseType: user.role === 'tutor' ? form.courseType.value : ''
     };
 
     try {
       await axios.put('http://localhost:5000/users/profile', profileData);
-      setUser({ ...user, ...profileData });
-      Swal.fire('Success', 'Profile parameters saved successfully!', 'success');
+      setUser(profileData);
+      Swal.fire('Success', 'Profile data updated!', 'success');
     } catch (error) {
-      Swal.fire('Error', 'Failed to adjust parameters', 'error');
+      Swal.fire('Error', 'Update processing failed.', 'error');
     } finally {
       setLoading(false);
     }
   };
 
-  const currentAvatar = user.image || (user.gender === 'female' 
-    ? 'https://i.ibb.co.com/zWzH4xG/female-avatar.png' 
-    : 'https://i.ibb.co.com/mC384Yx/male-avatar.png');
+  const currentAvatar = user.image || (user.gender === 'female' ? '/female-avatar.jpg' : '/male-avatar.jpg');
 
   return (
     <div className="min-h-screen bg-slate-50 py-12 px-4 font-sans space-y-8">
+      {/* Profile Header Header Card */}
       <div className="max-w-3xl mx-auto bg-white rounded-3xl shadow-xl border border-slate-200 p-8 flex flex-col md:flex-row gap-6 items-center">
-        <img src={currentAvatar} alt="" className="w-32 h-32 rounded-full object-cover border-4 border-teal-500 shadow-md bg-slate-100" />
+        <div className="relative group cursor-pointer" onClick={() => { setImagePreview(currentAvatar); setIsAvatarModalOpen(true); }}>
+          <img src={currentAvatar} alt="" className="w-32 h-32 rounded-full object-cover border-4 border-teal-500 shadow-md group-hover:opacity-80 transition-all" />
+          <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 bg-black/40 rounded-full transition-all">
+            <Camera className="w-6 h-6 text-white" />
+          </div>
+        </div>
         <div className="text-center md:text-left">
-          <h2 className="text-3xl font-black text-slate-900">{user.name || 'Anonymous Platform Member'}</h2>
+          <h2 className="text-3xl font-black text-slate-900">{user.name || 'Platform Member'}</h2>
           <p className="text-sm font-black text-teal-600 uppercase tracking-widest mt-1">Profile Dashboard Hub</p>
         </div>
       </div>
 
+      {/* Main Account Info Roster */}
       <div className="max-w-3xl mx-auto bg-white rounded-3xl shadow-xl border border-slate-200 p-8">
-        <form onSubmit={handleUpdateProfile} className="space-y-6">
+        <form onSubmit={handleGeneralProfileSubmit} className="space-y-6">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             <div><label className="block text-sm font-black text-slate-800 mb-1">Full Name</label><input type="text" name="name" defaultValue={user.name || ''} required className="w-full px-4 py-2.5 border border-slate-300 rounded-xl font-bold" /></div>
             <div><label className="block text-sm font-black text-slate-800 mb-1">Contact Number</label><input type="text" name="contact" defaultValue={user.contact || ''} placeholder="+88017..." className="w-full px-4 py-2.5 border border-slate-300 rounded-xl font-bold" /></div>
           </div>
           <div><label className="block text-sm font-black text-slate-800 mb-1">Address Location</label><input type="text" name="address" defaultValue={user.address || ''} placeholder="Dhaka, Bangladesh" className="w-full px-4 py-2.5 border border-slate-300 rounded-xl font-bold" /></div>
           
-          <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
-            <label className="block text-xs font-black text-slate-700 uppercase mb-2">Display Profile Avatar Source</label>
-            <div className="flex bg-slate-200 rounded-lg p-0.5 text-xs font-bold mb-3 max-w-xs">
-              <button type="button" onClick={() => setImageType('url')} className={`w-1/2 py-1 rounded-md ${imageType === 'url' ? 'bg-white text-teal-600' : ''}`}>Web Link URL</button>
-              <button type="button" onClick={() => setImageType('file')} className={`w-1/2 py-1 rounded-md ${imageType === 'file' ? 'bg-white text-teal-600' : ''}`}>Device File</button>
-            </div>
-            {imageType === 'url' ? (
-              <input type="url" name="imageUrl" defaultValue={user.image || ''} placeholder="https://..." className="w-full px-4 py-2.5 border border-slate-300 rounded-xl font-bold bg-white" />
-            ) : (
-              <input type="file" accept="image/*" onChange={handleFileChange} className="text-xs font-bold" />
-            )}
+          <div>
+            <label className="block text-sm font-black text-slate-800 mb-1">Short Biography / Personal Description</label>
+            <textarea name="description" rows="3" defaultValue={user.description || ''} placeholder="Tell us something about your expertise or targets..." className="w-full p-4 border border-slate-300 rounded-xl font-bold resize-none"></textarea>
           </div>
 
           {user.role === 'tutor' && (
@@ -96,6 +124,42 @@ const Profile = ({ user, setUser }) => {
           <button type="submit" disabled={loading} className="w-full py-4 bg-slate-900 text-white font-black rounded-xl cursor-pointer uppercase tracking-wider">Save Parameters</button>
         </form>
       </div>
+
+      {/* --- অ্যাডভান্সড প্রোফাইল ইমেজ মোডাল অ্যান্ড ম্যানেজার পপ-আপ --- */}
+      {isAvatarModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm flex justify-center items-center z-50 p-4">
+          <div className="bg-white rounded-3xl p-8 max-w-md w-full border-4 border-slate-900 relative space-y-6">
+            <button onClick={() => setIsAvatarModalOpen(false)} className="absolute top-4 right-4 bg-slate-100 p-1.5 rounded-full border border-slate-300 cursor-pointer text-slate-600 hover:text-black">
+              <X className="w-5 h-5 stroke-[3]" />
+            </button>
+            <h3 className="text-xl font-black text-slate-900">Manage Display Avatar</h3>
+            
+            <div className="flex justify-center bg-slate-50 p-4 rounded-2xl border shadow-inner relative">
+              <img src={imagePreview} alt="Preview Avatar" className="w-44 h-44 rounded-full object-cover border-4 border-teal-500 shadow-md bg-white" />
+              <button type="button" onClick={handleAvatarDelete} className="absolute bottom-6 right-28 bg-red-500 hover:bg-red-600 text-white p-2 rounded-full border border-white cursor-pointer shadow-md" title="Delete Avatar to Default">
+                <Trash2 className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleAvatarUpdateSubmit} className="space-y-4">
+              <div className="flex bg-slate-100 rounded-lg p-0.5 text-xs font-bold border">
+                <button type="button" onClick={() => setImageType('url')} className={`w-1/2 py-1.5 rounded-md ${imageType === 'url' ? 'bg-white text-teal-600 shadow-sm' : 'text-slate-600'}`}>Web Link URL</button>
+                <button type="button" onClick={() => setImageType('file')} className={`w-1/2 py-1.5 rounded-md ${imageType === 'file' ? 'bg-white text-teal-600 shadow-sm' : 'text-slate-600'}`}>Upload Device File</button>
+              </div>
+              
+              {imageType === 'url' ? (
+                <input type="url" name="imageUrl" placeholder="Paste image link URL here..." defaultValue={user.image ? user.image : ''} className="w-full px-4 py-2 border rounded-xl text-sm font-bold" />
+              ) : (
+                <input type="file" accept="image/*" onChange={handleFileChange} className="text-xs font-black" />
+              )}
+              
+              <button type="submit" className="w-full py-3 bg-teal-600 hover:bg-teal-700 text-white font-black rounded-xl text-sm shadow cursor-pointer uppercase tracking-wider flex justify-center items-center gap-2">
+                <RefreshCw className="w-4 h-4" /> Save Picture Changes
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
 
       {user.role === 'student' && (
         <div className="max-w-3xl mx-auto bg-white rounded-3xl shadow-xl border border-slate-200 p-8">

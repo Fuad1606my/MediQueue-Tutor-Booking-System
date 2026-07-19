@@ -8,9 +8,21 @@ import axios from 'axios';
 
 function App() {
   const [activeTab, setActiveTab] = useState('find');
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState(() => {
+    // রিফ্রেশ দিলেও যেন লগআউট না হয়, সেজন্য লোকাল স্টোরেজ থেকে সেশন রিকভারি
+    const savedUser = localStorage.getItem('mediqueue_session');
+    return savedUser ? JSON.parse(savedUser) : null;
+  });
   const [redirectTarget, setRedirectTarget] = useState(null);
   const [pendingCount, setPendingCount] = useState(0);
+
+  useEffect(() => {
+    if (user) {
+      localStorage.setItem('mediqueue_session', JSON.stringify(user));
+    } else {
+      localStorage.removeItem('mediqueue_session');
+    }
+  }, [user]);
 
   useEffect(() => {
     if (user && user.role === 'tutor') {
@@ -32,11 +44,21 @@ function App() {
     }
   };
 
+  const handleLogout = () => {
+    localStorage.removeItem('mediqueue_session');
+    setUser(null);
+    setActiveTab('find');
+    setRedirectTarget(null);
+    // লগআউট করার পর 'Go Back' অপশন পুরোপুরি ব্লক করার জন্য হিস্ট্রি ক্লিয়ারিং উইন্ডো
+    window.history.pushState(null, document.title, window.location.href);
+    window.addEventListener('popstate', function (event) {
+      window.history.pushState(null, document.title, window.location.href);
+    });
+  };
+
   const getUserAvatar = () => {
     if (user?.image) return user.image;
-    return user?.gender === 'female' 
-      ? 'https://i.ibb.co.com/zWzH4xG/female-avatar.png' 
-      : 'https://i.ibb.co.com/mC384Yx/male-avatar.png';
+    return user?.gender === 'female' ? '/female-avatar.jpg' : '/male-avatar.jpg';
   };
 
   return (
@@ -73,7 +95,7 @@ function App() {
                 {user ? (
                   <div className="flex gap-3 items-center border-l pl-4 border-slate-300">
                     <img src={getUserAvatar()} alt="Profile" onClick={() => handleTabClick('profile')} className={`w-10 h-10 rounded-full object-cover border-2 shadow-sm cursor-pointer transition-all ${activeTab === 'profile' ? 'border-teal-600 scale-105' : 'border-slate-300 hover:border-teal-400'}`} />
-                    <button onClick={() => { setUser(null); setActiveTab('find'); }} className="px-4 py-2 text-sm font-black rounded-xl bg-red-50 text-red-600 border border-red-200 cursor-pointer">
+                    <button onClick={handleLogout} className="px-4 py-2 text-sm font-black rounded-xl bg-red-50 text-red-600 border border-red-200 cursor-pointer">
                       Logout
                     </button>
                   </div>
@@ -89,8 +111,8 @@ function App() {
 
         <main>
           {activeTab === 'find' && <FindTutors user={user} setActiveTab={setActiveTab} redirectTarget={redirectTarget} setRedirectTarget={setRedirectTarget} />}
-          {activeTab === 'bookings' && (user ? <MyBookings user={user} /> : <Auth setUser={setUser} setActiveTab={setActiveTab} redirectTarget={redirectTarget} setRedirectTarget={setRedirectTarget} fallbackTab="bookings" customRole="student" />)}
-          {activeTab === 'add' && (user ? <AddTutor user={user} /> : <Auth setUser={setUser} setActiveTab={setActiveTab} redirectTarget={redirectTarget} setRedirectTarget={setRedirectTarget} fallbackTab="add" customRole="tutor" />)}
+          {activeTab === 'bookings' && (user ? <MyBookings user={user} /> : <Auth setUser={setUser} setActiveTab={setActiveTab} redirectTarget={redirectTarget} setRedirectTarget={setRedirectTarget} fallbackTab="bookings" />)}
+          {activeTab === 'add' && (user ? <AddTutor user={user} /> : <Auth setUser={setUser} setActiveTab={setActiveTab} redirectTarget={redirectTarget} setRedirectTarget={setRedirectTarget} fallbackTab="add" />)}
           {activeTab === 'auth' && <Auth setUser={setUser} setActiveTab={setActiveTab} redirectTarget={redirectTarget} setRedirectTarget={setRedirectTarget} />}
           {activeTab === 'profile' && user && <Profile user={user} setUser={setUser} />}
         </main>
