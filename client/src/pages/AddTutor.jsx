@@ -1,215 +1,141 @@
 import React, { useState, useEffect } from 'react';
-import { User, Mail, Image, Globe, PlusCircle, Loader2, Upload, Edit, Trash2, BookOpen, X } from 'lucide-react';
+import { PlusCircle, Loader2, Edit, Trash2, X } from 'lucide-react';
 import axios from 'axios';
 import Swal from 'sweetalert2';
 
-const AddTutor = () => {
+const AddTutor = ({ user }) => {
   const [myTutors, setMyTutors] = useState([]);
   const [loading, setLoading] = useState(false);
   const [listLoading, setListLoading] = useState(true);
-  const [imageType, setImageType] = useState('url');
-  const [imagePreview, setImagePreview] = useState('');
   const [currency, setCurrency] = useState('BDT');
   const [feeType, setFeeType] = useState('Hourly Rate');
   const [editingTutor, setEditingTutor] = useState(null);
 
   const fetchMyTutors = () => {
-    axios.get('http://localhost:5000/tutors')
+    axios.get(`http://localhost:5000/tutors?email=${user.email}`)
       .then(res => {
         setMyTutors(res.data);
-        setListLoading(false);
-      })
-      .catch(error => {
-        console.error(error);
         setListLoading(false);
       });
   };
 
   useEffect(() => {
     fetchMyTutors();
-  }, []);
-
-  const handleImageFileChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => setImagePreview(reader.result);
-      reader.readAsDataURL(file);
-    }
-  };
+  }, [user]);
 
   const handleAddTutor = async (event) => {
     event.preventDefault();
     setLoading(true);
-
     const form = event.target;
-    const name = form.name.value;
-    const email = form.email.value;
-    const language = form.language.value;
-    const price = form.price.value;
-    const description = form.description.value;
-    const finalImage = imageType === 'url' ? form.imageUrl.value : imagePreview;
-
-    if (!finalImage) {
-      Swal.fire({ title: 'Error', text: 'Please provide an image.', icon: 'error' });
-      setLoading(false);
-      return;
-    }
-
-    const tutorData = { name, email, image: finalImage, language, price: parseFloat(price), currency, feeType, description };
+    
+    const tutorData = {
+      name: user.name,
+      email: user.email,
+      image: user.image || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150',
+      language: form.language.value,
+      price: parseFloat(form.price.value),
+      currency,
+      feeType,
+      timeSlot: form.timeSlot.value,
+      description: form.description.value
+    };
 
     try {
       if (editingTutor) {
-        const res = await axios.put(`http://localhost:5000/tutors/${editingTutor._id}`, tutorData);
-        if (res.data.modifiedCount > 0) {
-          Swal.fire('Updated!', 'Tutor profile updated successfully.', 'success');
-          setEditingTutor(null);
-        }
+        await axios.put(`http://localhost:5000/tutors/${editingTutor._id}`, tutorData);
+        Swal.fire('Updated!', 'Subject criteria adjusted successfully.', 'success');
+        setEditingTutor(null);
       } else {
-        const res = await axios.post('http://localhost:5000/tutors', { ...tutorData, review: 0 });
-        if (res.data.insertedId) {
-          Swal.fire('Success!', 'New tutor profile published.', 'success');
-        }
+        await axios.post('http://localhost:5000/tutors', { ...tutorData, review: 0 });
+        Swal.fire('Published!', 'New subject schedule published successfully.', 'success');
       }
       form.reset();
-      setImagePreview('');
       fetchMyTutors();
     } catch (error) {
-      console.error(error);
-      Swal.fire('Failed', 'Connection error.', 'error');
+      Swal.fire('Failed', 'Action processing failed.', 'error');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleEditClick = (tutor) => {
-    setEditingTutor(tutor);
-    setImageType('url');
-    setImagePreview(tutor.image);
-    setCurrency(tutor.currency || 'BDT');
-    setFeeType(tutor.feeType || 'Hourly Rate');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
   const handleDeleteTutor = (id) => {
     Swal.fire({
       title: 'Are you sure?',
-      text: "This profile will be permanently deleted!",
+      text: "Remove this subject curriculum schedule?",
       icon: 'warning',
       showCancelButton: true,
       confirmButtonColor: '#EF4444',
       confirmButtonText: 'Yes, delete it!'
     }).then((result) => {
       if (result.isConfirmed) {
-        axios.delete(`http://localhost:5000/tutors/${id}`)
-          .then(res => {
-            if (res.data.deletedCount > 0) {
-              Swal.fire('Deleted!', 'Profile has been removed.', 'success');
-              fetchMyTutors();
-            }
-          });
+        axios.delete(`http://localhost:5000/tutors/${id}`).then(() => {
+          Swal.fire('Removed!', 'Subject itinerary dropped.', 'success');
+          fetchMyTutors();
+        });
       }
     });
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 py-12 px-4 sm:px-6 lg:px-8 font-sans space-y-12">
-      <div className="max-w-2xl mx-auto bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden">
-        <div className="bg-gradient-to-r from-teal-600 to-cyan-700 px-6 py-8 text-center sm:px-12 relative">
-          {editingTutor && (
-            <button onClick={() => { setEditingTutor(null); setImagePreview(''); }} className="absolute top-4 right-4 text-white hover:text-slate-200">
-              <X className="w-5 h-5" />
-            </button>
-          )}
-          <h2 className="text-3xl font-extrabold text-white flex justify-center items-center gap-3">
-            <PlusCircle className="w-8 h-8" /> {editingTutor ? 'Update Tutor Profile' : 'Become a Premium Tutor'}
-          </h2>
+    <div className="min-h-screen bg-slate-50 py-12 px-4 font-sans space-y-12">
+      <div className="max-w-2xl mx-auto bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden">
+        <div className="bg-gradient-to-r from-teal-600 to-cyan-700 px-6 py-8 text-center relative">
+          {editingTutor && <button onClick={() => setEditingTutor(null)} className="absolute top-4 right-4 text-white"><X className="w-5 h-5" /></button>}
+          <h2 className="text-3xl font-black text-white flex justify-center items-center gap-3"><PlusCircle className="w-8 h-8" /> {editingTutor ? 'Modify Subject Parameters' : 'Deploy New Subject Track'}</h2>
         </div>
-
-        <form onSubmit={handleAddTutor} className="p-6 sm:p-10 space-y-6">
+        <form onSubmit={handleAddTutor} className="p-8 space-y-6">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-2">Full Name</label>
-              <input type="text" name="name" required defaultValue={editingTutor?.name || ''} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl" />
+              <label className="block text-sm font-black text-slate-800 mb-2">Subject/Language Focus</label>
+              <input type="text" name="language" placeholder="e.g., English, Mathematics" required defaultValue={editingTutor?.language || ''} className="w-full px-4 py-2.5 border border-slate-300 rounded-xl font-bold" />
             </div>
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-2">Email</label>
-              <input type="email" name="email" required defaultValue={editingTutor?.email || ''} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl" />
+              <label className="block text-sm font-black text-slate-800 mb-2">Time Slot Option (AM/PM Zone)</label>
+              <input type="text" name="timeSlot" placeholder="e.g., 10:00 AM - 12:00 PM EST" required defaultValue={editingTutor?.timeSlot || ''} className="w-full px-4 py-2.5 border border-slate-300 rounded-xl font-bold" />
             </div>
           </div>
-
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-2">Language</label>
-              <input type="text" name="language" required defaultValue={editingTutor?.language || ''} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl" />
-            </div>
-            <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-2">Costing Strategy</label>
+              <label className="block text-sm font-black text-slate-800 mb-2">Costing Tier Setup</label>
               <div className="flex gap-2">
-                <select value={feeType} onChange={(e) => setFeeType(e.target.value)} className="w-1/2 p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm">
+                <select value={feeType} onChange={(e) => setFeeType(e.target.value)} className="w-1/2 p-2.5 border border-slate-300 rounded-xl font-bold bg-white">
                   <option value="Hourly Rate">Hourly Rate</option>
                   <option value="Course Fee">Course Fee</option>
                 </select>
-                <select value={currency} onChange={(e) => setCurrency(e.target.value)} className="w-1/2 p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold">
+                <select value={currency} onChange={(e) => setCurrency(e.target.value)} className="w-1/2 p-2.5 border border-slate-300 rounded-xl font-black bg-white">
                   <option value="BDT">৳ BDT</option>
                   <option value="USD">$ USD</option>
                 </select>
               </div>
             </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-semibold text-slate-700 mb-2">Amount</label>
-            <input type="number" name="price" required defaultValue={editingTutor?.price || ''} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl" />
-          </div>
-
-          <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
-            <div className="flex justify-between items-center">
-              <label className="text-sm font-semibold text-slate-700">Image Source</label>
-              <div className="flex bg-slate-200 rounded-lg p-0.5 text-xs font-bold">
-                <button type="button" onClick={() => setImageType('url')} className={`px-3 py-1 rounded-md ${imageType === 'url' ? 'bg-white text-teal-600' : ''}`}>URL</button>
-                <button type="button" onClick={() => setImageType('file')} className={`px-3 py-1 rounded-md ${imageType === 'file' ? 'bg-white text-teal-600' : ''}`}>File</button>
-              </div>
+            <div>
+              <label className="block text-sm font-black text-slate-800 mb-2">Pricing Amount</label>
+              <input type="number" name="price" required defaultValue={editingTutor?.price || ''} className="w-full px-4 py-2.5 border border-slate-300 rounded-xl font-bold" />
             </div>
-            {imageType === 'url' ? (
-              <input type="url" name="imageUrl" defaultValue={editingTutor?.image || ''} onChange={(e) => setImagePreview(e.target.value)} className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl" />
-            ) : (
-              <input type="file" accept="image/*" onChange={handleImageFileChange} className="w-full" />
-            )}
-            {imagePreview && <img src={imagePreview} alt="Preview" className="w-16 h-16 object-cover rounded-xl mt-2 border border-teal-500" />}
           </div>
-
           <div>
-            <label className="block text-sm font-semibold text-slate-700 mb-2">Bio & Description</label>
-            <textarea name="description" rows="4" required defaultValue={editingTutor?.description || ''} className="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl resize-none"></textarea>
+            <label className="block text-sm font-black text-slate-800 mb-2">Course Track Details-Description</label>
+            <textarea name="description" rows="4" required defaultValue={editingTutor?.description || ''} className="w-full p-4 border border-slate-300 rounded-xl font-bold resize-none"></textarea>
           </div>
-
-          <button type="submit" disabled={loading} className="w-full py-3 rounded-xl text-white bg-gradient-to-r from-teal-600 to-cyan-600 font-bold cursor-pointer">
-            {loading ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : editingTutor ? 'Update Profile' : 'Publish Profile'}
+          <button type="submit" disabled={loading} className="w-full py-4 rounded-xl text-white bg-slate-900 hover:bg-teal-600 font-black tracking-wide uppercase shadow-md cursor-pointer">
+            {loading ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : editingTutor ? 'Save Subject Update' : 'Publish Course Subject'}
           </button>
         </form>
       </div>
 
-      <div className="max-w-4xl mx-auto bg-white rounded-2xl shadow-md border border-slate-100 p-6">
-        <h3 className="text-xl font-bold text-slate-900 mb-4">Manage Registered Tutors</h3>
-        {listLoading ? (
-          <Loader2 className="w-6 h-6 animate-spin text-teal-600 mx-auto" />
-        ) : myTutors.length === 0 ? (
-          <p className="text-sm text-slate-500 text-center">No tutors registered yet.</p>
-        ) : (
-          <div className="divide-y divide-slate-100">
-            {myTutors.map(tutor => (
-              <div key={tutor._id} className="flex items-center justify-between py-4">
-                <div className="flex items-center gap-3">
-                  <img src={tutor.image} alt="" className="w-12 h-12 object-cover rounded-xl" onError={(e) => {e.target.src='https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150'}} />
-                  <div>
-                    <h4 className="font-bold text-slate-800">{tutor.name}</h4>
-                    <p className="text-xs text-slate-500">{tutor.language} • {tutor.currency === 'BDT' ? '৳' : '$'}{tutor.price}</p>
-                  </div>
+      <div className="max-w-4xl mx-auto bg-white rounded-3xl shadow-xl border border-slate-200 p-8">
+        <h3 className="text-2xl font-black text-slate-900 mb-6">Active Managed Course Tracks</h3>
+        {listLoading ? <Loader2 className="w-6 h-6 animate-spin text-teal-600 mx-auto" /> : myTutors.length === 0 ? <p className="text-base font-bold text-slate-500 text-center">No active subjects initialized.</p> : (
+          <div className="divide-y divide-slate-200">
+            {myTutors.map(t => (
+              <div key={t._id} className="flex items-center justify-between py-4 font-bold text-slate-800">
+                <div>
+                  <h4 className="text-lg font-black text-slate-900">{t.language}</h4>
+                  <p className="text-sm text-slate-500">{t.timeSlot} • {t.currency === 'BDT' ? '৳' : '$'}{t.price} ({t.feeType})</p>
                 </div>
                 <div className="flex gap-2">
-                  <button onClick={() => handleEditClick(tutor)} className="p-2 bg-amber-50 text-amber-600 rounded-xl hover:bg-amber-100"><Edit className="w-4 h-4" /></button>
-                  <button onClick={() => handleDeleteTutor(tutor._id)} className="p-2 bg-red-50 text-red-600 rounded-xl hover:bg-red-100"><Trash2 className="w-4 h-4" /></button>
+                  <button onClick={() => { setEditingTutor(t); setFeeType(t.feeType); setCurrency(t.currency); window.scrollTo({ top: 0, behavior: 'smooth' }); }} className="p-2.5 bg-amber-50 text-amber-600 border border-amber-200 rounded-xl"><Edit className="w-4 h-4" /></button>
+                  <button onClick={() => handleDeleteTutor(t._id)} className="p-2.5 bg-red-50 text-red-600 border border-red-200 rounded-xl"><Trash2 className="w-4 h-4" /></button>
                 </div>
               </div>
             ))}

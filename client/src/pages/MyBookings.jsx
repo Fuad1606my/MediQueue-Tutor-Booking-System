@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Calendar, User, Globe, Tag, Clock, BookOpen, Loader2, Trash2, X } from 'lucide-react';
+import { Calendar, User, Globe, Tag, Clock, BookOpen, Loader2, Trash2, CheckCircle, XCircle, X } from 'lucide-react';
 import axios from 'axios';
 import Swal from 'sweetalert2';
 
@@ -9,144 +9,113 @@ const MyBookings = ({ user }) => {
   const [viewDetails, setViewDetails] = useState(null);
 
   const fetchBookings = () => {
-    axios.get(`http://localhost:5000/bookings?email=${user.email}`)
-      .then(res => {
-        setBookings(res.data);
-        setLoading(false);
-      })
-      .catch(error => {
-        console.error(error);
-        setLoading(false);
-      });
+    const apiURL = user.role === 'tutor' 
+      ? `http://localhost:5000/bookings?tutorEmail=${user.email}`
+      : `http://localhost:5000/bookings?studentEmail=${user.email}`;
+      
+    axios.get(apiURL).then(res => {
+      setBookings(res.data);
+      setLoading(false);
+    });
   };
 
   useEffect(() => {
-    if (user?.email) {
-      fetchBookings();
-    }
+    fetchBookings();
   }, [user]);
+
+  const handleStatusUpdate = (id, newStatus) => {
+    axios.patch(`http://localhost:5000/bookings/${id}`, { status: newStatus }).then(() => {
+      Swal.fire('Updated', `Appointment slot marked as ${newStatus}.`, 'success');
+      fetchBookings();
+    });
+  };
 
   const handleCancelBooking = (id) => {
     Swal.fire({
       title: 'Are you sure?',
-      text: "You won't be able to revert this booking slot!",
+      text: "Remove this appointment entry?",
       icon: 'warning',
       showCancelButton: true,
       confirmButtonColor: '#EF4444',
-      cancelButtonColor: '#6B7280',
       confirmButtonText: 'Yes, cancel it!'
     }).then((result) => {
       if (result.isConfirmed) {
-        axios.delete(`http://localhost:5000/bookings/${id}`)
-          .then(res => {
-            if (res.data.deletedCount > 0) {
-              Swal.fire('Cancelled!', 'Booking entry has been removed.', 'success');
-              fetchBookings();
-            }
-          });
+        axios.delete(`http://localhost:5000/bookings/${id}`).then(() => {
+          Swal.fire('Deleted!', 'Appointment request cleared.', 'success');
+          fetchBookings();
+        });
       }
     });
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 py-12 px-4 sm:px-6 lg:px-8 font-sans">
+    <div className="min-h-screen bg-slate-50 py-12 px-4 font-sans">
       <div className="max-w-6xl mx-auto">
+        <h1 className="text-3xl font-black text-slate-900 mb-8">{user.role === 'tutor' ? 'Received Student Applications' : 'My Requested Bookings'}</h1>
         
-        <div className="mb-8">
-          <h1 className="text-3xl font-black text-slate-900 tracking-tight">
-            My Booked <span className="text-teal-600">Tutors</span>
-          </h1>
-        </div>
-
-        {loading ? (
-          <div className="flex justify-center items-center py-20">
-            <Loader2 className="w-10 h-10 text-teal-600 animate-spin" />
-          </div>
-        ) : (
-          <>
-            {bookings.length === 0 ? (
-              <div className="text-center py-16 bg-white rounded-2xl shadow-sm border border-slate-200 max-w-md mx-auto">
-                <BookOpen className="w-12 h-12 text-slate-300 mx-auto mb-4" />
-                <h3 className="text-xl font-bold text-slate-700">No Bookings Found</h3>
-              </div>
-            ) : (
-              <div className="bg-white rounded-2xl shadow-md border border-slate-200 overflow-hidden">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left border-collapse">
-                    <thead>
-                      <tr className="bg-slate-900 text-white text-xs font-black uppercase tracking-wider">
-                        <th className="px-6 py-4">Tutor Details</th>
-                        <th className="px-6 py-4">Language</th>
-                        <th className="px-6 py-4">Scheduled Date</th>
-                        <th className="px-6 py-4">Costing</th>
-                        <th className="px-6 py-4">Status</th>
-                        <th className="px-6 py-4 text-center">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-200 text-base font-bold text-slate-800">
-                      {bookings.map((booking) => (
-                        <tr key={booking._id} className="hover:bg-slate-50 transition-colors">
-                          <td className="px-6 py-4 cursor-pointer" onClick={() => setViewDetails(booking)}>
-                            <div className="flex items-center gap-3">
-                              <div className="w-9 h-9 rounded-full bg-teal-100 text-teal-800 flex items-center justify-center font-black text-sm border border-teal-300">
-                                {booking.tutorName ? booking.tutorName.charAt(0) : 'T'}
-                              </div>
-                              <div>
-                                <span className="font-black text-slate-900 block hover:text-teal-600 transition-colors">{booking.tutorName}</span>
-                                <span className="text-xs text-slate-500 block flex items-center gap-1 mt-0.5"><User className="w-3 h-3" /> {booking.studentName}</span>
-                              </div>
-                            </div>
-                          </td>
-                          <td className="px-6 py-4">
-                            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-lg text-xs font-black bg-slate-100 text-slate-900 border border-slate-300">
-                              <Globe className="w-3.5 h-3.5 text-slate-600" /> {booking.language}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 text-slate-700 font-bold">
-                            <span className="flex items-center gap-1.5"><Calendar className="w-4 h-4 text-slate-500" /> {booking.bookingDate}</span>
-                          </td>
-                          <td className="px-6 py-4 font-black text-slate-900">
-                            <span className="inline-flex items-center gap-1"><Tag className="w-3.5 h-3.5 text-teal-600" /> {booking.currency === 'BDT' ? '৳' : '$'}{booking.price}</span>
-                          </td>
-                          <td className="px-6 py-4">
-                            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-black uppercase bg-amber-100 text-amber-900 border border-amber-300"><Clock className="w-3 h-3" /> {booking.status}</span>
-                          </td>
-                          <td className="px-6 py-4 text-center">
-                            <button onClick={() => handleCancelBooking(booking._id)} className="px-3 py-2 rounded-xl text-xs font-black text-white bg-red-500 hover:bg-red-600 cursor-pointer shadow-sm"><Trash2 className="w-3.5 h-3.5 inline mr-1" /> Cancel</button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
-          </>
+        {loading ? <div className="text-center py-20"><Loader2 className="w-10 h-10 animate-spin text-teal-600 mx-auto" /></div> : (
+          bookings.length === 0 ? <p className="text-center py-16 text-slate-500 font-bold">No slots generated inside your itinerary hub.</p> : (
+            <div className="bg-white rounded-2xl shadow-md border border-slate-200 overflow-hidden">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-slate-900 text-white text-xs font-black uppercase">
+                    <th className="px-6 py-4">{user.role === 'tutor' ? 'Student Details' : 'Tutor Details'}</th>
+                    <th className="px-6 py-4">Language Track</th>
+                    <th className="px-6 py-4">Schedule Frame</th>
+                    <th className="px-6 py-4">Placed Stamp</th>
+                    <th className="px-6 py-4">Status</th>
+                    <th className="px-6 py-4 text-center">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y text-base font-bold text-slate-800">
+                  {bookings.map(b => (
+                    <tr key={b._id} className="hover:bg-slate-50 transition-colors">
+                      <td className="px-6 py-4 cursor-pointer text-slate-900 font-black" onClick={() => setViewDetails(b)}>
+                        {user.role === 'tutor' ? b.studentName : b.tutorName}
+                        <span className="block text-xs text-slate-400 font-bold">{user.role === 'tutor' ? b.studentEmail : b.tutorEmail}</span>
+                      </td>
+                      <td className="px-6 py-4"><span className="px-2 py-0.5 bg-slate-100 border text-xs rounded-lg">{b.language}</span></td>
+                      <td className="px-6 py-4 text-sm text-slate-700">{b.bookingDate} <span className="block text-xs font-black text-teal-600">{b.timeSlot}</span></td>
+                      <td className="px-6 py-4 text-xs text-slate-400">{b.createdAt || 'N/A'}</td>
+                      <td className="px-6 py-4">
+                        <span className={`px-2.5 py-1 rounded-full text-xs font-black uppercase ${b.status === 'accepted' ? 'bg-green-100 text-green-800' : b.status === 'denied' ? 'bg-red-100 text-red-800' : 'bg-amber-100 text-amber-800'}`}>{b.status}</span>
+                      </td>
+                      <td className="px-6 py-4 text-center">
+                        {user.role === 'tutor' ? (
+                          <div className="flex gap-2 justify-center">
+                            <button onClick={() => handleStatusUpdate(b._id, 'accepted')} className="p-2 bg-green-500 text-white rounded-xl text-xs"><CheckCircle className="w-4 h-4" /></button>
+                            <button onClick={() => handleStatusUpdate(b._id, 'denied')} className="p-2 bg-red-500 text-white rounded-xl text-xs"><XCircle className="w-4 h-4" /></button>
+                          </div>
+                        ) : (
+                          <button onClick={() => handleCancelBooking(b._id)} className="px-3 py-1.5 bg-red-500 text-white rounded-xl text-xs shadow-sm cursor-pointer"><Trash2 className="w-3.5 h-3.5 inline mr-1" /> Cancel</button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )
         )}
 
-        {/* --- বুকিং ডিটেইলস পপ-আপ মডাল --- */}
+        {/* --- বড় হাই-কন্ট্রাস্ট মডাল পপ-আপ --- */}
         {viewDetails && (
-          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex justify-center items-center z-50 p-4">
-            <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden relative border border-slate-300 p-8 space-y-4">
-              <button onClick={() => setViewDetails(null)} className="absolute top-5 right-5 text-slate-800 hover:text-black bg-slate-100 p-2 rounded-full border border-slate-300 cursor-pointer">
-                <X className="w-6 h-6 stroke-[3]" />
+          <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-md flex justify-center items-center z-50 p-4">
+            <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-8 relative border-4 border-slate-800">
+              <button onClick={() => setViewDetails(null)} className="absolute top-4 right-4 text-red-600 hover:text-red-800 bg-red-50 p-2.5 rounded-full border-2 border-red-500 cursor-pointer shadow-md">
+                <X className="w-6 h-6 stroke-[4]" />
               </button>
-              <div>
-                <h3 className="text-2xl font-black text-slate-900">{viewDetails.tutorName}</h3>
-                <p className="text-sm font-bold text-teal-600 mt-1">Language Medium Focus: {viewDetails.language}</p>
+              <h3 className="text-2xl font-black text-slate-900 mb-2">{user.role === 'tutor' ? 'Student Registration Itinerary' : 'Tutor Curricular Dossier'}</h3>
+              <div className="bg-slate-50 border p-4 rounded-xl font-bold text-slate-800 space-y-2 text-base">
+                <p><span className="text-teal-700 font-black">Course Target:</span> {viewDetails.language}</p>
+                <p><span className="text-teal-700 font-black">Allocated Frame:</span> {viewDetails.bookingDate} ({viewDetails.timeSlot})</p>
+                <p><span className="text-teal-700 font-black">Booking Stamp:</span> {viewDetails.createdAt || 'N/A'}</p>
+                <p><span className="text-teal-700 font-black">Tuition Valuation:</span> {viewDetails.currency === 'BDT' ? '৳' : '$'}{viewDetails.price} / {viewDetails.feeType}</p>
               </div>
-              <div className="border-t border-b border-slate-200 py-4">
-                <h4 className="text-xs font-black text-slate-500 uppercase tracking-widest mb-2 text-teal-700">Tutor Description Details</h4>
-                <p className="text-lg font-bold text-slate-800 leading-relaxed whitespace-pre-line">{viewDetails.tutorDescription || 'Premium educational expert focusing on comprehensive curriculum design.'}</p>
-              </div>
-              <div className="flex justify-between items-center text-sm font-bold text-slate-700 bg-slate-50 p-3 rounded-xl border">
-                <span>Booked User: {viewDetails.studentName}</span>
-                <span>Scheduled: {viewDetails.bookingDate}</span>
-              </div>
+              <div className="pt-2"><h4 className="text-sm font-black text-slate-900 uppercase tracking-widest text-teal-700 mb-1">Itinerary Syllabus Notes</h4><p className="text-lg font-bold text-slate-800 leading-relaxed border-l-4 border-teal-500 pl-4">{viewDetails.tutorDescription || 'Premium language curriculum strategy map initialized successfully.'}</p></div>
             </div>
           </div>
         )}
-
       </div>
     </div>
   );

@@ -27,70 +27,65 @@ let usersCollection;
 async function run() {
   try {
     await client.connect();
-    
     const database = client.db("mediQueueDB");
     tutorsCollection = database.collection("tutors");
     bookingsCollection = database.collection("bookings");
     usersCollection = database.collection("users");
-
-    console.log("📁 Database Collections initialized successfully!");
+    console.log("📁 Database Connections initialized successfully!");
   } catch (error) {
-    console.error("MongoDB Connection Error:", error);
+    console.error(error);
   }
 }
 run().catch(console.dir);
 
-// Auth Sign Up
+// Auth APIs
 app.post('/users/signup', async (req, res) => {
   try {
     const user = req.body;
     const existingUser = await usersCollection.findOne({ email: user.email });
     if (existingUser) {
-      return res.status(400).send({ message: "This email is already registered!" });
+      return res.status(400).send({ message: "Email already exists" });
     }
     const result = await usersCollection.insertOne(user);
     res.status(201).send(result);
   } catch (error) {
-    res.status(500).send({ message: "Internal Server Error during Signup" });
+    res.status(500).send({ message: "Signup failed" });
   }
 });
 
-// Auth Sign In
 app.post('/users/signin', async (req, res) => {
   try {
     const { email, password } = req.body;
     const user = await usersCollection.findOne({ email, password });
     if (!user) {
-      return res.status(401).send({ message: "Invalid email or password parameters." });
+      return res.status(401).send({ message: "Invalid credentials" });
     }
     res.send(user);
   } catch (error) {
-    res.status(500).send({ message: "Internal Server Error during Signin" });
+    res.status(500).send({ message: "Signin failed" });
   }
 });
 
 app.put('/users/profile', async (req, res) => {
   try {
-    const { email, name, address, contact, image, hourlyPay, courseType } = req.body;
-    const filter = { email };
-    const updateDoc = {
-      $set: { name, address, contact, image, hourlyPay, courseType }
-    };
-    const result = await usersCollection.updateOne(filter, updateDoc);
+    const { email, name, address, contact, image, gender, hourlyPay, courseType } = req.body;
+    const result = await usersCollection.updateOne(
+      { email },
+      { $set: { name, address, contact, image, gender, hourlyPay, courseType } }
+    );
     res.send(result);
   } catch (error) {
     res.status(500).send({ message: "Profile update failed" });
   }
 });
 
-// Tutors APIs
+// Subjects/Tutors Management
 app.post('/tutors', async (req, res) => {
   try {
-    const newTutor = req.body;
-    const result = await tutorsCollection.insertOne(newTutor);
+    const result = await tutorsCollection.insertOne(req.body);
     res.status(201).send(result);
   } catch (error) {
-    res.status(500).send({ message: "Failed to add tutor" });
+    res.status(500).send({ message: "Failed to add" });
   }
 });
 
@@ -98,57 +93,41 @@ app.get('/tutors', async (req, res) => {
   try {
     const email = req.query.email;
     let query = {};
-    if (email) {
-      query = { email: email };
-    }
-    const cursor = tutorsCollection.find(query);
-    const result = await cursor.toArray();
+    if (email) query = { email };
+    const result = await tutorsCollection.find(query).toArray();
     res.send(result);
   } catch (error) {
-    res.status(500).send({ message: "Failed to fetch tutors" });
+    res.status(500).send({ message: "Failed to fetch" });
   }
 });
 
 app.put('/tutors/:id', async (req, res) => {
   try {
     const id = req.params.id;
-    const filter = { _id: new ObjectId(id) };
-    const updatedTutor = req.body;
-    const updateDoc = {
-      $set: {
-        name: updatedTutor.name,
-        email: updatedTutor.email,
-        language: updatedTutor.language,
-        price: parseFloat(updatedTutor.price),
-        currency: updatedTutor.currency,
-        feeType: updatedTutor.feeType,
-        description: updatedTutor.description,
-        image: updatedTutor.image
-      },
-    };
-    const result = await tutorsCollection.updateOne(filter, updateDoc);
+    const updated = req.body;
+    const result = await tutorsCollection.updateOne(
+      { _id: new ObjectId(id) },
+      { $set: { name: updated.name, email: updated.email, language: updated.language, price: parseFloat(updated.price), currency: updated.currency, feeType: updated.feeType, description: updated.description, image: updated.image, timeSlot: updated.timeSlot } }
+    );
     res.send(result);
   } catch (error) {
-    res.status(500).send({ message: "Failed to update tutor" });
+    res.status(500).send({ message: "Update failed" });
   }
 });
 
 app.delete('/tutors/:id', async (req, res) => {
   try {
-    const id = req.params.id;
-    const query = { _id: new ObjectId(id) };
-    const result = await tutorsCollection.deleteOne(query);
+    const result = await tutorsCollection.deleteOne({ _id: new ObjectId(req.params.id) });
     res.send(result);
   } catch (error) {
-    res.status(500).send({ message: "Failed to delete tutor" });
+    res.status(500).send({ message: "Delete failed" });
   }
 });
 
 // Bookings APIs
 app.post('/bookings', async (req, res) => {
   try {
-    const bookingData = req.body;
-    const result = await bookingsCollection.insertOne(bookingData);
+    const result = await bookingsCollection.insertOne(req.body);
     res.send(result);
   } catch (error) {
     res.status(500).send({ message: "Booking failed" });
@@ -157,34 +136,37 @@ app.post('/bookings', async (req, res) => {
 
 app.get('/bookings', async (req, res) => {
   try {
-    const email = req.query.email;
+    const { studentEmail, tutorEmail } = req.query;
     let query = {};
-    if (email) {
-      query = { studentEmail: email };
-    }
-    const cursor = bookingsCollection.find(query);
-    const result = await cursor.toArray();
+    if (studentEmail) query = { studentEmail };
+    if (tutorEmail) query = { tutorEmail };
+    const result = await bookingsCollection.find(query).toArray();
     res.send(result);
   } catch (error) {
-    res.status(500).send({ message: "Failed to fetch bookings" });
+    res.status(500).send({ message: "Fetch bookings failed" });
+  }
+});
+
+app.patch('/bookings/:id', async (req, res) => {
+  try {
+    const { status } = req.body;
+    const result = await bookingsCollection.updateOne(
+      { _id: new ObjectId(req.params.id) },
+      { $set: { status } }
+    );
+    res.send(result);
+  } catch (error) {
+    res.status(500).send({ message: "Status update failed" });
   }
 });
 
 app.delete('/bookings/:id', async (req, res) => {
   try {
-    const id = req.params.id;
-    const query = { _id: new ObjectId(id) };
-    const result = await bookingsCollection.deleteOne(query);
+    const result = await bookingsCollection.deleteOne({ _id: new ObjectId(req.params.id) });
     res.send(result);
   } catch (error) {
-    res.status(500).send({ message: "Failed to delete booking" });
+    res.status(500).send({ message: "Delete booking failed" });
   }
 });
 
-app.get('/', (req, res) => {
-  res.send('MediQueue Booking System Server is Running');
-});
-
-app.listen(port, () => {
-  console.log(`🚀 Server is listening on port: ${port}`);
-});
+app.listen(port, () => console.log(`🚀 Server is listening on port: ${port}`));
