@@ -34,41 +34,38 @@ async function run() {
     usersCollection = database.collection("users");
 
     console.log("📁 Database Collections initialized successfully!");
-    
-    await client.db("admin").command({ ping: 1 });
-    console.log("🎯 Successfully connected to MongoDB Atlas!");
-
   } catch (error) {
     console.error("MongoDB Connection Error:", error);
   }
 }
 run().catch(console.dir);
 
-// Auth APIs
+// Auth Sign Up
 app.post('/users/signup', async (req, res) => {
   try {
     const user = req.body;
     const existingUser = await usersCollection.findOne({ email: user.email });
     if (existingUser) {
-      return res.status(400).send({ message: "Email already registered" });
+      return res.status(400).send({ message: "This email is already registered!" });
     }
     const result = await usersCollection.insertOne(user);
     res.status(201).send(result);
   } catch (error) {
-    res.status(500).send({ message: "Signup failed" });
+    res.status(500).send({ message: "Internal Server Error during Signup" });
   }
 });
 
+// Auth Sign In
 app.post('/users/signin', async (req, res) => {
   try {
     const { email, password } = req.body;
     const user = await usersCollection.findOne({ email, password });
     if (!user) {
-      return res.status(401).send({ message: "Invalid email or password" });
+      return res.status(401).send({ message: "Invalid email or password parameters." });
     }
     res.send(user);
   } catch (error) {
-    res.status(500).send({ message: "Signin failed" });
+    res.status(500).send({ message: "Internal Server Error during Signin" });
   }
 });
 
@@ -106,15 +103,7 @@ app.get('/tutors', async (req, res) => {
     }
     const cursor = tutorsCollection.find(query);
     const result = await cursor.toArray();
-
-    const fixedResult = result.map(tutor => {
-      if (tutor.name === "Jhankar Mahbub" && tutor.price === 5500) {
-        return { ...tutor, currency: "BDT" };
-      }
-      return tutor;
-    });
-
-    res.send(fixedResult);
+    res.send(result);
   } catch (error) {
     res.status(500).send({ message: "Failed to fetch tutors" });
   }
