@@ -32,12 +32,12 @@ const Auth = ({ setUser, setActiveTab, redirectTarget, setRedirectTarget, fallba
     let image = isSignUp ? (imageType === 'url' ? form.imageUrl?.value : imagePreview) : '';
     if (isSignUp && !image) image = defaultAvatar;
 
-    if (isSignUp && (customRole === 'tutor' || role === 'tutor') && !image) {
+    if (isSignUp && role === 'tutor' && !image) {
       Swal.fire('Required', 'Tutor profiles must contain a valid display image.', 'error');
       return;
     }
 
-    const userData = { name, email, password, role: customRole || role, gender, image };
+    const userData = { name, email, password, role, gender, image };
 
     try {
       if (isSignUp) {
@@ -51,6 +51,7 @@ const Auth = ({ setUser, setActiveTab, redirectTarget, setRedirectTarget, fallba
         if (res.data.email) {
           setUser(res.data);
           Swal.fire('Welcome', `Successfully authenticated!`, 'success');
+          
           if (redirectTarget) {
             if (redirectTarget.type === 'tab') setActiveTab(redirectTarget.value);
             if (redirectTarget.type === 'book') setActiveTab('find');
@@ -70,7 +71,9 @@ const Auth = ({ setUser, setActiveTab, redirectTarget, setRedirectTarget, fallba
   return (
     <div className="min-h-[75vh] flex items-center justify-center p-6 font-sans">
       <div className="bg-white p-8 rounded-3xl shadow-2xl border border-slate-200 max-w-lg w-full">
-        <h2 className="text-3xl font-black text-slate-900 text-center mb-6">{isSignUp ? 'Create Premium Account' : 'Welcome Back'}</h2>
+        <h2 className="text-3xl font-black text-slate-900 text-center mb-6">
+          {isSignUp ? 'Create Premium Account' : 'Welcome Back'}
+        </h2>
         <form onSubmit={handleSubmit} className="space-y-4">
           {isSignUp && (
             <>
@@ -96,7 +99,8 @@ const Auth = ({ setUser, setActiveTab, redirectTarget, setRedirectTarget, fallba
             <input type="password" name="password" required className="w-full px-4 py-2.5 border border-slate-300 rounded-xl font-bold" />
           </div>
 
-          {isSignUp && !customRole && (
+          {/* সাইন-আপ করার সময় "Join Platform As" ড্রপডাউনটি এখন সবসময় গ্লোবালি সচল থাকবে */}
+          {isSignUp && (
             <div>
               <label className="block text-sm font-black text-slate-800 mb-1">Join Platform As</label>
               <select value={role} onChange={(e) => setRole(e.target.value)} className="w-full p-2.5 border border-slate-300 rounded-xl font-bold bg-white text-slate-800">
@@ -106,7 +110,7 @@ const Auth = ({ setUser, setActiveTab, redirectTarget, setRedirectTarget, fallba
             </div>
           )}
 
-          {isSignUp && (role === 'tutor' || customRole === 'tutor') && (
+          {isSignUp && role === 'tutor' && (
             <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2">
               <label className="block text-xs font-black text-slate-700 uppercase">Tutor Avatar Source</label>
               <div className="flex bg-slate-200 rounded-lg p-0.5 text-xs font-bold mb-2">
@@ -122,7 +126,7 @@ const Auth = ({ setUser, setActiveTab, redirectTarget, setRedirectTarget, fallba
             </div>
           )}
 
-          <button type="submit" className="w-full py-3.5 bg-teal-600 text-white font-black rounded-xl shadow-md cursor-pointer text-base uppercase tracking-wider">
+          <button type="submit" className="w-full py-3.5 bg-teal-600 text-white font-black rounded-xl shadow-md cursor-pointer text-base uppercase tracking-wider mt-2">
             {isSignUp ? 'Register Account' : 'Authenticate Credentials'}
           </button>
         </form>
