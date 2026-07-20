@@ -4,6 +4,7 @@ import Home from './pages/Home';
 import FindTutors from './pages/FindTutors';
 import MyBookings from './pages/MyBookings';
 import AddTutor from './pages/AddTutor';
+import MyTutors from './pages/MyTutors';
 import Auth from './pages/Auth';
 import Profile from './pages/Profile';
 
@@ -12,7 +13,7 @@ function App() {
     return sessionStorage.getItem('mediqueue_active_tab') || 'home';
   });
 
-  const [authMode, setAuthMode] = useState('login'); // 'login' or 'register'
+  const [authMode, setAuthMode] = useState('login');
 
   const [user, setUser] = useState(() => {
     const savedUser = localStorage.getItem('mediqueue_session');
@@ -24,16 +25,7 @@ function App() {
 
   useEffect(() => {
     sessionStorage.setItem('mediqueue_active_tab', activeTab);
-    const titleMap = {
-      home: "Home | MediQueue",
-      find: "Tutors | MediQueue",
-      bookings: "My Bookings | MediQueue",
-      add: "Add Tutor | MediQueue",
-      profile: "My Profile | MediQueue",
-      auth: authMode === 'login' ? "Log In | MediQueue" : "Register | MediQueue"
-    };
-    document.title = titleMap[activeTab] || "MediQueue Tutor Hub";
-  }, [activeTab, authMode]);
+  }, [activeTab]);
 
   useEffect(() => {
     if (user) {
@@ -64,62 +56,28 @@ function App() {
   return (
     <div className="bg-slate-50 min-h-screen flex flex-col justify-between font-sans">
       <div>
-        {/* Navbar */}
         <nav className="bg-white border-b border-slate-100 sticky top-0 z-50 shadow-sm px-6 md:px-16 h-16 flex justify-between items-center">
-          
-          {/* Logo */}
-          <div 
-            onClick={() => handleTabClick('home')} 
-            className="flex items-center gap-2 cursor-pointer select-none group"
-          >
-            <div className="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center font-black text-base shadow-sm group-hover:scale-105 transition-all">
-              🎓
-            </div>
-            <span className="text-xl font-black text-slate-900 tracking-tight">
-              Medi<span className="text-blue-600">Queue</span>
-            </span>
+          <div onClick={() => handleTabClick('home')} className="flex items-center gap-2 cursor-pointer select-none">
+            <div className="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center font-black text-base shadow-sm">🎓</div>
+            <span className="text-xl font-black text-slate-900 tracking-tight">Medi<span className="text-blue-600">Queue</span></span>
           </div>
 
-          {/* Center Links */}
           <div className="flex items-center gap-2 bg-slate-100/70 p-1 rounded-full border border-slate-200/60 text-xs font-black">
-            <button 
-              onClick={() => handleTabClick('home')} 
-              className={`px-4 py-1.5 rounded-full transition-all cursor-pointer ${activeTab === 'home' ? 'bg-blue-100 text-blue-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
-            >
-              Home
-            </button>
-            <button 
-              onClick={() => handleTabClick('find')} 
-              className={`px-4 py-1.5 rounded-full transition-all cursor-pointer ${activeTab === 'find' ? 'bg-blue-100 text-blue-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
-            >
-              Tutors
-            </button>
+            <button onClick={() => handleTabClick('home')} className={`px-4 py-1.5 rounded-full transition-all cursor-pointer ${activeTab === 'home' ? 'bg-blue-100 text-blue-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}>Home</button>
+            <button onClick={() => handleTabClick('find')} className={`px-4 py-1.5 rounded-full transition-all cursor-pointer ${activeTab === 'find' ? 'bg-blue-100 text-blue-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}>Tutors</button>
             {user && (
               <>
-                <button 
-                  onClick={() => handleTabClick('add')} 
-                  className={`px-4 py-1.5 rounded-full transition-all cursor-pointer ${activeTab === 'add' ? 'bg-blue-100 text-blue-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
-                >
-                  Add Tutor
-                </button>
-                <button 
-                  onClick={() => handleTabClick('bookings')} 
-                  className={`px-4 py-1.5 rounded-full transition-all cursor-pointer ${activeTab === 'bookings' ? 'bg-blue-100 text-blue-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
-                >
-                  My Sessions
-                </button>
+                <button onClick={() => handleTabClick('add')} className={`px-4 py-1.5 rounded-full transition-all cursor-pointer ${activeTab === 'add' ? 'bg-blue-100 text-blue-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}>Add Tutor</button>
+                <button onClick={() => handleTabClick('my-tutors')} className={`px-4 py-1.5 rounded-full transition-all cursor-pointer ${activeTab === 'my-tutors' ? 'bg-blue-100 text-blue-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}>My Tutors</button>
+                <button onClick={() => handleTabClick('bookings')} className={`px-4 py-1.5 rounded-full transition-all cursor-pointer ${activeTab === 'bookings' ? 'bg-blue-100 text-blue-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}>My Sessions</button>
               </>
             )}
           </div>
 
-          {/* Right Auth Section */}
           <div className="flex items-center gap-3 text-xs font-black">
             {user ? (
               <div className="relative">
-                <button 
-                  onClick={() => setIsDropdownOpen(!isDropdownOpen)} 
-                  className="w-9 h-9 rounded-full bg-blue-600 text-white font-black flex items-center justify-center border-2 border-slate-200 cursor-pointer shadow-sm hover:scale-105 transition-all"
-                >
+                <button onClick={() => setIsDropdownOpen(!isDropdownOpen)} className="w-9 h-9 rounded-full bg-blue-600 text-white font-black flex items-center justify-center border-2 border-slate-200 cursor-pointer shadow-sm">
                   {user.name ? user.name.charAt(0).toUpperCase() : 'U'}
                 </button>
                 {isDropdownOpen && (
@@ -135,49 +93,24 @@ function App() {
               </div>
             ) : (
               <>
-                <button 
-                  onClick={() => handleAuthTabClick('login')} 
-                  className={`px-4 py-1.5 rounded-full transition-all cursor-pointer ${activeTab === 'auth' && authMode === 'login' ? 'bg-blue-100 text-blue-600 shadow-sm font-black' : 'text-slate-600 hover:text-slate-900'}`}
-                >
-                  Log in
-                </button>
-                <button 
-                  onClick={() => handleAuthTabClick('register')} 
-                  className={`px-5 py-2 rounded-full transition-all cursor-pointer shadow-sm ${activeTab === 'auth' && authMode === 'register' ? 'bg-blue-600 text-white font-black' : 'bg-blue-600 text-white hover:bg-blue-700'}`}
-                >
-                  Register
-                </button>
+                <button onClick={() => handleAuthTabClick('login')} className={`px-4 py-1.5 rounded-full transition-all cursor-pointer ${activeTab === 'auth' && authMode === 'login' ? 'bg-blue-100 text-blue-600 font-black' : 'text-slate-600 hover:text-slate-900'}`}>Log in</button>
+                <button onClick={() => handleAuthTabClick('register')} className="px-5 py-2 rounded-full bg-blue-600 text-white hover:bg-blue-700 transition-all cursor-pointer shadow-sm">Register</button>
               </>
             )}
           </div>
         </nav>
 
-        {/* Main Content */}
-  <main>
-  {activeTab === 'home' && (
-    <Home 
-      user={user}
-      setActiveTab={setActiveTab} 
-      setRedirectTarget={setRedirectTarget} 
-      setAuthMode={setAuthMode} 
-    />
-  )}
-  {activeTab === 'find' && (
-    <FindTutors 
-      user={user} 
-      setActiveTab={setActiveTab} 
-      setRedirectTarget={setRedirectTarget} 
-      setAuthMode={setAuthMode}
-    />
-  )}
-  {activeTab === 'bookings' && (user ? <MyBookings user={user} /> : <Auth setUser={setUser} setActiveTab={setActiveTab} redirectTarget={redirectTarget} setRedirectTarget={setRedirectTarget} authMode={authMode} setAuthMode={setAuthMode} />)}
-  {activeTab === 'add' && (user ? <AddTutor user={user} setActiveTab={setActiveTab} /> : <Auth setUser={setUser} setActiveTab={setActiveTab} redirectTarget={redirectTarget} setRedirectTarget={setRedirectTarget} authMode={authMode} setAuthMode={setAuthMode} />)}
-  {activeTab === 'auth' && <Auth setUser={setUser} setActiveTab={setActiveTab} redirectTarget={redirectTarget} setRedirectTarget={setRedirectTarget} authMode={authMode} setAuthMode={setAuthMode} />}
-  {activeTab === 'profile' && user && <Profile user={user} setUser={setUser} />}
-</main>
+        <main>
+          {activeTab === 'home' && <Home user={user} setActiveTab={setActiveTab} setRedirectTarget={setRedirectTarget} setAuthMode={setAuthMode} />}
+          {activeTab === 'find' && <FindTutors user={user} setActiveTab={setActiveTab} setRedirectTarget={setRedirectTarget} setAuthMode={setAuthMode} />}
+          {activeTab === 'bookings' && (user ? <MyBookings user={user} /> : <Auth setUser={setUser} setActiveTab={setActiveTab} redirectTarget={redirectTarget} setRedirectTarget={setRedirectTarget} authMode={authMode} setAuthMode={setAuthMode} />)}
+          {activeTab === 'add' && (user ? <AddTutor user={user} setActiveTab={setActiveTab} /> : <Auth setUser={setUser} setActiveTab={setActiveTab} redirectTarget={redirectTarget} setRedirectTarget={setRedirectTarget} authMode={authMode} setAuthMode={setAuthMode} />)}
+          {activeTab === 'my-tutors' && (user ? <MyTutors user={user} /> : <Auth setUser={setUser} setActiveTab={setActiveTab} redirectTarget={redirectTarget} setRedirectTarget={setRedirectTarget} authMode={authMode} setAuthMode={setAuthMode} />)}
+          {activeTab === 'auth' && <Auth setUser={setUser} setActiveTab={setActiveTab} redirectTarget={redirectTarget} setRedirectTarget={setRedirectTarget} authMode={authMode} setAuthMode={setAuthMode} />}
+          {activeTab === 'profile' && user && <Profile user={user} setUser={setUser} />}
+        </main>
       </div>
 
-      {/* Footer */}
       <footer className="bg-[#0b1329] text-slate-400 py-12 border-t border-slate-800 text-xs font-medium">
         <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 md:grid-cols-4 gap-8">
           <div className="space-y-3">

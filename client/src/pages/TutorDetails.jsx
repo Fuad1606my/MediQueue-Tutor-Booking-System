@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { ArrowLeft, Star, Award, GraduationCap, MapPin, Monitor, Calendar, Clock, Users } from 'lucide-react';
+import { ArrowLeft, Star, Award, GraduationCap, MapPin, Monitor, Calendar, Clock, Users, ZoomIn, X } from 'lucide-react';
 import Swal from 'sweetalert2';
 import axios from 'axios';
 
 const TutorDetails = ({ tutor, user, onBack, setActiveTab, setRedirectTarget, setAuthMode }) => {
   const [showBookingModal, setShowBookingModal] = useState(false);
+  const [isZoomed, setIsZoomed] = useState(false);
 
   const handleBookClick = () => {
     if (!user) {
@@ -77,9 +78,22 @@ const TutorDetails = ({ tutor, user, onBack, setActiveTab, setRedirectTarget, se
         <div className="h-44 bg-gradient-to-r from-blue-100 via-indigo-50 to-blue-50 relative"></div>
 
         <div className="p-8 pt-0 space-y-8 relative">
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 -mt-16">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 -mt-20">
             <div className="flex flex-col md:flex-row items-start md:items-end gap-5">
-              <img src={tutor.image || '/male-avatar.jpg'} alt="" className="w-32 h-32 rounded-2xl border-4 border-white shadow-md object-cover bg-slate-100" onError={(e)=>e.target.src='/male-avatar.jpg'} />
+              
+              {/* 🖼️ Perfectly Positioned Avatar with Click-to-Zoom */}
+              <div className="relative group/avatar cursor-pointer" onClick={() => setIsZoomed(true)}>
+                <img 
+                  src={tutor.image || 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=800'} 
+                  alt={tutor.name} 
+                  className="w-36 h-36 rounded-2xl border-4 border-white shadow-lg object-cover object-top bg-slate-100 group-hover/avatar:brightness-90 transition-all" 
+                  onError={(e)=>e.target.src='https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=800'} 
+                />
+                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover/avatar:opacity-100 transition-all text-white font-black text-xs gap-1 bg-black/40 rounded-2xl">
+                  <ZoomIn className="w-4 h-4" /> Zoom
+                </div>
+              </div>
+
               <div className="space-y-1">
                 <h1 className="text-3xl font-black text-slate-900">{tutor.name}</h1>
                 <p className="text-sm font-black text-blue-600 font-mono">{tutor.language || tutor.subject || 'Mathematics'}</p>
@@ -146,6 +160,23 @@ const TutorDetails = ({ tutor, user, onBack, setActiveTab, setRedirectTarget, se
           </div>
         </div>
       </div>
+
+      {/* 🔍 FULL SIZE IMAGE LIGHTBOX */}
+      {isZoomed && (
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setIsZoomed(false)}>
+          <div className="relative bg-white p-3 rounded-3xl max-w-lg w-full shadow-2xl space-y-3" onClick={(e) => e.stopPropagation()}>
+            <div className="flex justify-between items-center px-2 pt-1">
+              <h3 className="text-sm font-black text-slate-900">{tutor.name}</h3>
+              <button onClick={() => setIsZoomed(false)} className="p-1.5 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 transition-all cursor-pointer">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="w-full max-h-[75vh] overflow-hidden rounded-2xl bg-slate-100 flex items-center justify-center border">
+              <img src={tutor.image} alt="" className="w-full h-full object-contain max-h-[70vh]" />
+            </div>
+          </div>
+        </div>
+      )}
 
       {showBookingModal && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
