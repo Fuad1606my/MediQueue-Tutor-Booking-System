@@ -8,57 +8,43 @@ const Auth = ({ setUser, setActiveTab, redirectTarget, setRedirectTarget, fallba
   const [role, setRole] = useState(customRole || 'student');
   const [emailInput, setEmailInput] = useState('');
   const [passwordInput, setPasswordInput] = useState('');
-  const [suggestions, setSuggestions] = useState([]);
+  
+  // ডাইনামিক টাইপ পরিবর্তনের জন্য রিয়েক্ট স্টেট
+  const [emailFieldType, setEmailFieldType] = useState('text');
+  const [passFieldType, setPasswordFieldType] = useState('text');
 
-  // কাস্টম ডিভাইস ম্যাচিং সাজেশন জেনারেটর
+  // পেজ লোড বা টগল করার সময় ইনপুট ভ্যালু একদম ব্লাঙ্ক বা ফাঁকা রাখা নিশ্চিত করার জন্য
   useEffect(() => {
-    if (!isSignUp && emailInput.length >= 2) {
-      const savedVault = localStorage.getItem('mediqueue_vault_list');
-      if (savedVault) {
-        const accounts = JSON.parse(savedVault);
-        const matched = accounts.filter(acc => 
-          acc.email.toLowerCase().includes(emailInput.toLowerCase())
-        );
-        setSuggestions(matched);
-      }
-    } else {
-      setSuggestions([]);
-    }
-  }, [emailInput, isSignUp]);
-
-  const handleSelectSuggestion = (acc) => {
-    setEmailInput(acc.email);
-    setPasswordInput(acc.password);
-    setSuggestions([]);
-  };
+    setEmailInput('');
+    setPasswordInput('');
+    setEmailFieldType('text');
+    setPasswordFieldType('text');
+  }, [isSignUp]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     
     let defaultAvatar = gender === 'female' ? '/female-avatar.jpg' : '/male-avatar.jpg';
-    const userData = { name: e.target.name?.value || '', email: emailInput, password: passwordInput, role, gender, image: defaultAvatar };
+    const userData = { 
+      name: e.target.name?.value || '', 
+      email: emailInput, 
+      password: passwordInput, 
+      role, 
+      gender, 
+      image: defaultAvatar 
+    };
 
     try {
       if (isSignUp) {
         const res = await axios.post('http://localhost:5000/users/signup', userData);
         if (res.status === 201) {
           Swal.fire({
-            title: 'Secure Credentials?',
-            text: "Save account parameters on this local device vault?",
-            icon: 'question',
-            showCancelButton: true,
-            confirmButtonColor: '#0D9488',
-            confirmButtonText: 'Yes, Save'
-          }).then((result) => {
-            if (result.isConfirmed) {
-              const currentVault = JSON.parse(localStorage.getItem('mediqueue_vault_list') || '[]');
-              if(!currentVault.some(v => v.email.toLowerCase() === emailInput.toLowerCase())) {
-                currentVault.push({ email: emailInput, password: passwordInput });
-                localStorage.setItem('mediqueue_vault_list', JSON.stringify(currentVault));
-              }
-            }
-            setIsSignUp(false);
+            title: 'Account Registered!',
+            text: 'Please sign in with your secure parameters.',
+            icon: 'success',
+            confirmButtonColor: '#0D9488'
           });
+          setIsSignUp(false);
         }
       } else {
         const res = await axios.post('http://localhost:5000/users/signin', { email: emailInput, password: passwordInput });
@@ -93,7 +79,7 @@ const Auth = ({ setUser, setActiveTab, redirectTarget, setRedirectTarget, fallba
             <>
               <div>
                 <label className="block text-sm font-black text-slate-800 mb-1">Full Name</label>
-                <input type="text" name="name" required className="w-full px-4 py-2.5 border border-slate-300 rounded-xl font-bold" />
+                <input type="text" name="name" required className="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-xl font-bold text-slate-800" />
               </div>
               <div>
                 <label className="block text-sm font-black text-slate-800 mb-1">Gender Specification</label>
@@ -105,45 +91,38 @@ const Auth = ({ setUser, setActiveTab, redirectTarget, setRedirectTarget, fallba
             </>
           )}
           
-          <div className="relative">
+          <div>
             <label className="block text-sm font-black text-slate-800 mb-1">Email Address</label>
+            {/* ডাইনামিকলি অন-ফোকাস টাইপ মিউটেশন ট্রিক */}
             <input 
-              type="email" 
-              name="email" 
+              type={emailFieldType}
+              name="mediqueue_secure_user_field" 
               required 
               value={emailInput}
               onChange={(e) => setEmailInput(e.target.value)}
-              className="w-full px-4 py-2.5 border border-slate-300 rounded-xl font-bold" 
+              onFocus={() => setEmailFieldType('email')}
+              placeholder="Enter your email address"
+              autoComplete="new-password"
+              className="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-xl font-bold text-slate-800 focus:border-teal-500 focus:outline-none transition-all" 
             />
-            {/* ডাইনামিক ফিল্টার্ড সাজেশন ওভারলে */}
-            {suggestions.length > 0 && (
-              <div className="absolute left-0 right-0 bg-white border border-slate-300 rounded-xl shadow-lg mt-1 z-50 overflow-hidden divide-y">
-                {suggestions.map((acc, index) => (
-                  <div 
-                    key={index} 
-                    onClick={() => handleSelectSuggestion(acc)}
-                    className="p-3 text-sm font-bold text-slate-700 hover:bg-slate-100 cursor-pointer transition-colors"
-                  >
-                    {acc.email}
-                  </div>
-                ))}
-              </div>
-            )}
           </div>
 
           <div>
             <label className="block text-sm font-black text-slate-800 mb-1">Password</label>
+            {/* ডাইনামিকলি অন-ফোকাস টাইপ মিউটেশন ট্রিক */}
             <input 
-              type="password" 
-              name="password" 
+              type={passFieldType}
+              name="mediqueue_secure_pass_field" 
               required 
               value={passwordInput}
               onChange={(e) => setPasswordInput(e.target.value)}
-              className="w-full px-4 py-2.5 border border-slate-300 rounded-xl font-bold" 
+              onFocus={() => setPasswordFieldType('password')}
+              placeholder="Enter your password"
+              autoComplete="new-password"
+              className="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-xl font-bold text-slate-800 focus:border-teal-500 focus:outline-none transition-all" 
             />
           </div>
 
-          {/* কন্ডিশনাল ড্রপডাউন ফিল্টারিং: Become Tutor থেকে আসলে Role Selection অপশন থাকবে না */}
           {isSignUp && !customRole && (
             <div>
               <label className="block text-sm font-black text-slate-800 mb-1">Join Platform As</label>
@@ -154,13 +133,13 @@ const Auth = ({ setUser, setActiveTab, redirectTarget, setRedirectTarget, fallba
             </div>
           )}
 
-          <button type="submit" className="w-full py-3.5 bg-teal-600 text-white font-black rounded-xl shadow-md cursor-pointer text-base uppercase tracking-wider mt-4">
-            {isSignUp ? 'Register Account' : 'Log in'}
+          <button type="submit" className="w-full py-4 bg-teal-600 hover:bg-teal-700 text-white font-black rounded-xl shadow-md cursor-pointer text-base uppercase tracking-wider mt-4 transition-all">
+            {isSignUp ? 'Register Account' : 'LOG IN'}
           </button>
         </form>
         <p className="text-sm text-center font-bold text-slate-600 mt-5">
           {isSignUp ? 'Already registered?' : 'New to MediQueue?'}{' '}
-          <button onClick={() => { setIsSignUp(!isSignUp); setSuggestions([]); }} className="text-teal-600 font-black hover:underline bg-transparent border-none cursor-pointer">
+          <button onClick={() => setIsSignUp(!isSignUp)} className="text-teal-600 font-black hover:underline bg-transparent border-none cursor-pointer">
             {isSignUp ? 'Sign In' : 'Sign Up'}
           </button>
         </p>
