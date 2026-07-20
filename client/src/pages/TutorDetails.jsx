@@ -3,11 +3,10 @@ import { ArrowLeft, Star, Award, GraduationCap, MapPin, Monitor, Calendar, Clock
 import Swal from 'sweetalert2';
 import axios from 'axios';
 
-const TutorDetails = ({ tutor, user, onBack, setActiveTab, setRedirectTarget }) => {
+const TutorDetails = ({ tutor, user, onBack, setActiveTab, setRedirectTarget, setAuthMode }) => {
   const [showBookingModal, setShowBookingModal] = useState(false);
 
   const handleBookClick = () => {
-    // লগইন না থাকলে সরাসরি লগইন পেজে রিডাইরেক্ট করা
     if (!user) {
       Swal.fire({
         toast: true,
@@ -15,12 +14,26 @@ const TutorDetails = ({ tutor, user, onBack, setActiveTab, setRedirectTarget }) 
         icon: 'error',
         title: 'Please log in to book a session',
         showConfirmButton: false,
-        timer: 3000
+        timer: 1500
       });
-      setRedirectTarget({ type: 'tab', value: 'find' });
-      setActiveTab('auth');
+
+      if (setRedirectTarget) {
+        setRedirectTarget({ type: 'tab', value: 'find' });
+      }
+
+      if (setAuthMode) {
+        setAuthMode('login');
+      }
+
+      setTimeout(() => {
+        if (setActiveTab) {
+          setActiveTab('auth');
+        }
+      }, 1200);
+
       return;
     }
+
     setShowBookingModal(true);
   };
 
@@ -56,22 +69,14 @@ const TutorDetails = ({ tutor, user, onBack, setActiveTab, setRedirectTarget }) 
 
   return (
     <div className="min-h-screen bg-slate-50 py-10 px-4 md:px-12 max-w-6xl mx-auto space-y-6 font-sans">
-      
-      {/* Back Button */}
       <button onClick={onBack} className="flex items-center gap-2 text-xs font-black text-slate-600 hover:text-blue-600 cursor-pointer transition-all">
         <ArrowLeft className="w-4 h-4" /> Back to Tutors
       </button>
 
-      {/* Main Card */}
       <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
-        
-        {/* Banner Top */}
         <div className="h-44 bg-gradient-to-r from-blue-100 via-indigo-50 to-blue-50 relative"></div>
 
-        {/* Content Body */}
         <div className="p-8 pt-0 space-y-8 relative">
-          
-          {/* Header Row */}
           <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 -mt-16">
             <div className="flex flex-col md:flex-row items-start md:items-end gap-5">
               <img src={tutor.image || '/male-avatar.jpg'} alt="" className="w-32 h-32 rounded-2xl border-4 border-white shadow-md object-cover bg-slate-100" onError={(e)=>e.target.src='/male-avatar.jpg'} />
@@ -86,18 +91,17 @@ const TutorDetails = ({ tutor, user, onBack, setActiveTab, setRedirectTarget }) 
 
             <div className="flex items-center gap-4 w-full md:w-auto justify-between md:justify-end border-t md:border-0 pt-4 md:pt-0">
               <span className="text-3xl font-black text-slate-900">${tutor.price || 45}<span className="text-sm font-bold text-slate-400">/hr</span></span>
-              <button onClick={handleBookClick} className="px-8 py-3.5 bg-blue-600 hover:bg-blue-700 text-white font-black text-sm rounded-xl shadow-md cursor-pointer transition-all">
+              <button onClick={handleBookClick} className="px-8 py-3.5 bg-blue-600 hover:bg-blue-700 text-white font-black text-sm rounded-xl shadow-md cursor-pointer transition-all hover:scale-105">
                 Book Session
               </button>
             </div>
           </div>
 
-          {/* Info Badges Grid */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-4">
             <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200/80 space-y-1">
               <GraduationCap className="w-4 h-4 text-blue-600" />
               <p className="text-[10px] font-black text-slate-400 uppercase">Institution</p>
-              <p className="text-xs font-black text-slate-900">{tutor.institution || 'MIT / Standard'}</p>
+              <p className="text-xs font-black text-slate-900">{tutor.institution || 'MIT / Harvard'}</p>
             </div>
             <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200/80 space-y-1">
               <Award className="w-4 h-4 text-blue-600" />
@@ -134,18 +138,15 @@ const TutorDetails = ({ tutor, user, onBack, setActiveTab, setRedirectTarget }) 
             </div>
           </div>
 
-          {/* About Section */}
           <div className="border-t pt-6 space-y-2">
             <h3 className="text-lg font-black text-slate-900">About</h3>
             <p className="text-xs font-medium text-slate-600 leading-relaxed max-w-4xl">
               {tutor.about || "PhD in Applied Mathematics from MIT. Specialises in calculus, linear algebra, and advanced statistics. Known for breaking complex problems into approachable steps that click on the first try."}
             </p>
           </div>
-
         </div>
       </div>
 
-      {/* Booking Modal */}
       {showBookingModal && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-3xl p-6 max-w-sm w-full space-y-4 border shadow-2xl">
@@ -164,7 +165,6 @@ const TutorDetails = ({ tutor, user, onBack, setActiveTab, setRedirectTarget }) 
           </div>
         </div>
       )}
-
     </div>
   );
 };

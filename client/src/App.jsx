@@ -8,16 +8,18 @@ import Auth from './pages/Auth';
 import Profile from './pages/Profile';
 
 function App() {
-  // ফিগমার মতো ডিফল্ট রুট হিসেবে 'home' সেট করা হচ্ছে
   const [activeTab, setActiveTab] = useState(() => {
     return sessionStorage.getItem('mediqueue_active_tab') || 'home';
   });
+
+  const [authMode, setAuthMode] = useState('login'); // 'login' or 'register'
 
   const [user, setUser] = useState(() => {
     const savedUser = localStorage.getItem('mediqueue_session');
     return savedUser ? JSON.parse(savedUser) : null;
   });
 
+  const [redirectTarget, setRedirectTarget] = useState(null);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
   useEffect(() => {
@@ -28,10 +30,10 @@ function App() {
       bookings: "My Bookings | MediQueue",
       add: "Add Tutor | MediQueue",
       profile: "My Profile | MediQueue",
-      auth: "Authentication | MediQueue"
+      auth: authMode === 'login' ? "Log In | MediQueue" : "Register | MediQueue"
     };
     document.title = titleMap[activeTab] || "MediQueue Tutor Hub";
-  }, [activeTab]);
+  }, [activeTab, authMode]);
 
   useEffect(() => {
     if (user) {
@@ -46,6 +48,12 @@ function App() {
     setIsDropdownOpen(false);
   };
 
+  const handleAuthTabClick = (mode) => {
+    setAuthMode(mode);
+    setActiveTab('auth');
+    setIsDropdownOpen(false);
+  };
+
   const handleLogout = () => {
     localStorage.removeItem('mediqueue_session');
     setUser(null);
@@ -56,15 +64,15 @@ function App() {
   return (
     <div className="bg-slate-50 min-h-screen flex flex-col justify-between font-sans">
       <div>
-        {/* 🎓 1. FIGMA MATCHING NAVBAR */}
+        {/* Navbar */}
         <nav className="bg-white border-b border-slate-100 sticky top-0 z-50 shadow-sm px-6 md:px-16 h-16 flex justify-between items-center">
           
           {/* Logo */}
           <div 
             onClick={() => handleTabClick('home')} 
-            className="flex items-center gap-2 cursor-pointer select-none"
+            className="flex items-center gap-2 cursor-pointer select-none group"
           >
-            <div className="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center font-black text-base shadow-sm">
+            <div className="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center font-black text-base shadow-sm group-hover:scale-105 transition-all">
               🎓
             </div>
             <span className="text-xl font-black text-slate-900 tracking-tight">
@@ -72,8 +80,8 @@ function App() {
             </span>
           </div>
 
-          {/* Center Navigation Links (Figma Pill Active Style) */}
-          <div className="flex items-center gap-2 bg-slate-100/60 p-1 rounded-full border border-slate-200/60 text-xs font-black">
+          {/* Center Links */}
+          <div className="flex items-center gap-2 bg-slate-100/70 p-1 rounded-full border border-slate-200/60 text-xs font-black">
             <button 
               onClick={() => handleTabClick('home')} 
               className={`px-4 py-1.5 rounded-full transition-all cursor-pointer ${activeTab === 'home' ? 'bg-blue-100 text-blue-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
@@ -104,7 +112,7 @@ function App() {
             )}
           </div>
 
-          {/* Right Auth Buttons / User Avatar */}
+          {/* Right Auth Section */}
           <div className="flex items-center gap-3 text-xs font-black">
             {user ? (
               <div className="relative">
@@ -128,35 +136,41 @@ function App() {
             ) : (
               <>
                 <button 
-                  onClick={() => handleTabClick('auth')} 
-                  className="text-slate-600 hover:text-slate-900 px-3 py-1.5 rounded-lg cursor-pointer"
+                  onClick={() => handleAuthTabClick('login')} 
+                  className={`px-4 py-1.5 rounded-full transition-all cursor-pointer ${activeTab === 'auth' && authMode === 'login' ? 'bg-blue-100 text-blue-600 shadow-sm font-black' : 'text-slate-600 hover:text-slate-900'}`}
                 >
                   Log in
                 </button>
                 <button 
-                  onClick={() => handleTabClick('auth')} 
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-full shadow-sm transition-all cursor-pointer"
+                  onClick={() => handleAuthTabClick('register')} 
+                  className={`px-5 py-2 rounded-full transition-all cursor-pointer shadow-sm ${activeTab === 'auth' && authMode === 'register' ? 'bg-blue-600 text-white font-black' : 'bg-blue-600 text-white hover:bg-blue-700'}`}
                 >
                   Register
                 </button>
               </>
             )}
           </div>
-
         </nav>
 
-        {/* 🎓 2. DYNAMIC PAGE ROUTING */}
+        {/* Main Content */}
         <main>
           {activeTab === 'home' && <Home setActiveTab={setActiveTab} />}
-          {activeTab === 'find' && <FindTutors user={user} setActiveTab={setActiveTab} />}
-          {activeTab === 'bookings' && (user ? <MyBookings user={user} /> : <Auth setUser={setUser} setActiveTab={setActiveTab} />)}
-          {activeTab === 'add' && (user ? <AddTutor user={user} setActiveTab={setActiveTab} /> : <Auth setUser={setUser} setActiveTab={setActiveTab} />)}
-          {activeTab === 'auth' && <Auth setUser={setUser} setActiveTab={setActiveTab} />}
+          {activeTab === 'find' && (
+            <FindTutors 
+              user={user} 
+              setActiveTab={setActiveTab} 
+              setRedirectTarget={setRedirectTarget} 
+              setAuthMode={setAuthMode}
+            />
+          )}
+          {activeTab === 'bookings' && (user ? <MyBookings user={user} /> : <Auth setUser={setUser} setActiveTab={setActiveTab} redirectTarget={redirectTarget} setRedirectTarget={setRedirectTarget} authMode={authMode} setAuthMode={setAuthMode} />)}
+          {activeTab === 'add' && (user ? <AddTutor user={user} setActiveTab={setActiveTab} /> : <Auth setUser={setUser} setActiveTab={setActiveTab} redirectTarget={redirectTarget} setRedirectTarget={setRedirectTarget} authMode={authMode} setAuthMode={setAuthMode} />)}
+          {activeTab === 'auth' && <Auth setUser={setUser} setActiveTab={setActiveTab} redirectTarget={redirectTarget} setRedirectTarget={setRedirectTarget} authMode={authMode} setAuthMode={setAuthMode} />}
           {activeTab === 'profile' && user && <Profile user={user} setUser={setUser} />}
         </main>
       </div>
 
-      {/* 🎓 3. FIGMA MATCHING DARK FOOTER */}
+      {/* Footer */}
       <footer className="bg-[#0b1329] text-slate-400 py-12 border-t border-slate-800 text-xs font-medium">
         <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 md:grid-cols-4 gap-8">
           <div className="space-y-3">
