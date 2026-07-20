@@ -1,27 +1,36 @@
 import './index.css';
 import React, { useState, useEffect } from 'react';
-import AddTutor from './pages/AddTutor';
+import Home from './pages/Home';
 import FindTutors from './pages/FindTutors';
 import MyBookings from './pages/MyBookings';
+import AddTutor from './pages/AddTutor';
 import Auth from './pages/Auth';
 import Profile from './pages/Profile';
-import axios from 'axios';
 
 function App() {
-  // রিফ্রেশ দিলেও যেন একই পেজ থাকে, সেজন্য sessionStorage দিয়ে ট্র্যাক করা হচ্ছে
+  // ফিগমার মতো ডিফল্ট রুট হিসেবে 'home' সেট করা হচ্ছে
   const [activeTab, setActiveTab] = useState(() => {
-    return sessionStorage.getItem('mediqueue_active_tab') || 'find';
+    return sessionStorage.getItem('mediqueue_active_tab') || 'home';
   });
-  
+
   const [user, setUser] = useState(() => {
     const savedUser = localStorage.getItem('mediqueue_session');
     return savedUser ? JSON.parse(savedUser) : null;
   });
-  const [redirectTarget, setRedirectTarget] = useState(null);
-  const [pendingCount, setPendingCount] = useState(0);
+
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
   useEffect(() => {
     sessionStorage.setItem('mediqueue_active_tab', activeTab);
+    const titleMap = {
+      home: "Home | MediQueue",
+      find: "Tutors | MediQueue",
+      bookings: "My Bookings | MediQueue",
+      add: "Add Tutor | MediQueue",
+      profile: "My Profile | MediQueue",
+      auth: "Authentication | MediQueue"
+    };
+    document.title = titleMap[activeTab] || "MediQueue Tutor Hub";
   }, [activeTab]);
 
   useEffect(() => {
@@ -32,120 +41,161 @@ function App() {
     }
   }, [user]);
 
-  // ব্রাউজারের ব্যাক/ফরওয়ার্ড (Go Back) বাটন হ্যান্ডলিং লজিক
-  useEffect(() => {
-    const handlePopState = () => {
-      const currentTab = sessionStorage.getItem('mediqueue_active_tab') || 'find';
-      // যদি ইউজার লগআউট অবস্থায় থাকে এবং সিকিউর পেজে যাওয়ার চেষ্টা করে
-      if (!user && (currentTab === 'bookings' || currentTab === 'add' || currentTab === 'profile')) {
-        setActiveTab('auth');
-      } else {
-        setActiveTab(currentTab);
-      }
-    };
-
-    window.addEventListener('popstate', handlePopState);
-    return () => window.removeEventListener('popstate', handlePopState);
-  }, [user]);
-
-  useEffect(() => {
-    if (user && user.role === 'tutor') {
-      axios.get(`http://localhost:5000/bookings?tutorEmail=${user.email}`)
-        .then(res => {
-          const pending = res.data.filter(b => b.status === 'pending');
-          setPendingCount(pending.length);
-        })
-        .catch(err => console.error(err));
-    } else {
-      setPendingCount(0);
-    }
-  }, [user, activeTab]);
-
-  const handleTabClick = (targetTab) => {
-    // ব্রাউজার হিস্ট্রি পুশ করা হচ্ছে যেন গো-ব্যাক বাটন ট্র্যাক রাখতে পারে
-    window.history.pushState(null, '', '');
-    setActiveTab(targetTab);
-    if (!user && (targetTab === 'bookings' || targetTab === 'add')) {
-      setRedirectTarget({ type: 'tab', value: targetTab });
-    }
+  const handleTabClick = (tab) => {
+    setActiveTab(tab);
+    setIsDropdownOpen(false);
   };
 
   const handleLogout = () => {
     localStorage.removeItem('mediqueue_session');
     setUser(null);
-    setActiveTab('find');
-    setRedirectTarget(null);
-    sessionStorage.setItem('mediqueue_active_tab', 'find');
-
-    // লগআউট করার পর 'Go Back' অপশন পুরোপুরি লক করার সিকিউরিটি মেকানিজম
-    window.history.pushState(null, document.title, window.location.href);
-    const blockBack = () => {
-      window.history.pushState(null, document.title, window.location.href);
-    };
-    window.addEventListener('popstate', blockBack);
-  };
-
-  const getUserAvatar = () => {
-    if (user?.image) return user.image;
-    return user?.gender === 'female' ? '/female-avatar.jpg' : '/male-avatar.jpg';
+    setActiveTab('home');
+    setIsDropdownOpen(false);
   };
 
   return (
-    <div className="bg-slate-50 min-h-screen flex flex-col justify-between">
+    <div className="bg-slate-50 min-h-screen flex flex-col justify-between font-sans">
       <div>
-        <nav className="bg-white border-b border-slate-200 sticky top-0 z-50 shadow-md">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex justify-between h-20 items-center">
-              <span className="text-2xl font-black bg-gradient-to-r from-teal-600 to-cyan-600 bg-clip-text text-transparent tracking-tight cursor-pointer" onClick={() => handleTabClick('find')}>
-                MediQueue Tutor Hub
-              </span>
-              <div className="flex gap-4 items-center">
-                <button onClick={() => handleTabClick('find')} className={`px-5 py-2.5 text-base font-black rounded-xl cursor-pointer transition-all ${activeTab === 'find' ? 'bg-teal-600 text-white shadow-md' : 'text-slate-700 hover:bg-slate-100'}`}>
-                  Browse Tutors
+        {/* 🎓 1. FIGMA MATCHING NAVBAR */}
+        <nav className="bg-white border-b border-slate-100 sticky top-0 z-50 shadow-sm px-6 md:px-16 h-16 flex justify-between items-center">
+          
+          {/* Logo */}
+          <div 
+            onClick={() => handleTabClick('home')} 
+            className="flex items-center gap-2 cursor-pointer select-none"
+          >
+            <div className="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center font-black text-base shadow-sm">
+              🎓
+            </div>
+            <span className="text-xl font-black text-slate-900 tracking-tight">
+              Medi<span className="text-blue-600">Queue</span>
+            </span>
+          </div>
+
+          {/* Center Navigation Links (Figma Pill Active Style) */}
+          <div className="flex items-center gap-2 bg-slate-100/60 p-1 rounded-full border border-slate-200/60 text-xs font-black">
+            <button 
+              onClick={() => handleTabClick('home')} 
+              className={`px-4 py-1.5 rounded-full transition-all cursor-pointer ${activeTab === 'home' ? 'bg-blue-100 text-blue-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
+            >
+              Home
+            </button>
+            <button 
+              onClick={() => handleTabClick('find')} 
+              className={`px-4 py-1.5 rounded-full transition-all cursor-pointer ${activeTab === 'find' ? 'bg-blue-100 text-blue-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
+            >
+              Tutors
+            </button>
+            {user && (
+              <>
+                <button 
+                  onClick={() => handleTabClick('add')} 
+                  className={`px-4 py-1.5 rounded-full transition-all cursor-pointer ${activeTab === 'add' ? 'bg-blue-100 text-blue-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
+                >
+                  Add Tutor
                 </button>
-                <button onClick={() => handleTabClick('bookings')} className={`relative px-5 py-2.5 text-base font-black rounded-xl cursor-pointer transition-all ${activeTab === 'bookings' ? 'bg-teal-600 text-white shadow-md' : 'text-slate-700 hover:bg-slate-100'}`}>
-                  My Bookings
-                  {user?.role === 'tutor' && pendingCount > 0 && (
-                    <span className="absolute -top-1 -right-2 bg-red-500 text-white font-black text-xs px-2 py-0.5 rounded-full shadow animate-pulse">
-                      {pendingCount}
-                    </span>
-                  )}
+                <button 
+                  onClick={() => handleTabClick('bookings')} 
+                  className={`px-4 py-1.5 rounded-full transition-all cursor-pointer ${activeTab === 'bookings' ? 'bg-blue-100 text-blue-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
+                >
+                  My Sessions
                 </button>
-                {user?.role === 'tutor' ? (
-                  <button onClick={() => handleTabClick('add')} className={`px-5 py-2.5 text-base font-black rounded-xl cursor-pointer transition-all ${activeTab === 'add' ? 'bg-teal-600 text-white shadow-md' : 'text-slate-700 hover:bg-slate-100'}`}>
-                    My Subjects
-                  </button>
-                ) : (
-                  <button onClick={() => handleTabClick('add')} className={`px-5 py-2.5 text-base font-black rounded-xl cursor-pointer transition-all ${activeTab === 'add' ? 'bg-teal-600 text-white shadow-md' : 'text-slate-700 hover:bg-slate-100'}`}>
-                    + Become Tutor
-                  </button>
-                )}
-                
-                {user ? (
-                  <div className="flex gap-3 items-center border-l pl-4 border-slate-300">
-                    <img src={getUserAvatar()} alt="Profile" onClick={() => handleTabClick('profile')} className={`w-10 h-10 rounded-full object-cover border-2 shadow-sm cursor-pointer transition-all ${activeTab === 'profile' ? 'border-teal-600 scale-105' : 'border-slate-300 hover:border-teal-400'}`} />
-                    <button onClick={handleLogout} className="px-4 py-2 text-sm font-black rounded-xl bg-red-50 text-red-600 border border-red-200 cursor-pointer">
-                      Logout
-                    </button>
+              </>
+            )}
+          </div>
+
+          {/* Right Auth Buttons / User Avatar */}
+          <div className="flex items-center gap-3 text-xs font-black">
+            {user ? (
+              <div className="relative">
+                <button 
+                  onClick={() => setIsDropdownOpen(!isDropdownOpen)} 
+                  className="w-9 h-9 rounded-full bg-blue-600 text-white font-black flex items-center justify-center border-2 border-slate-200 cursor-pointer shadow-sm hover:scale-105 transition-all"
+                >
+                  {user.name ? user.name.charAt(0).toUpperCase() : 'U'}
+                </button>
+                {isDropdownOpen && (
+                  <div className="absolute right-0 mt-2 w-48 bg-white border border-slate-200 rounded-2xl shadow-xl py-2 z-50 font-bold text-slate-700">
+                    <div className="px-4 py-2 border-b border-slate-100">
+                      <p className="text-xs font-black text-slate-900 truncate">{user.name}</p>
+                      <p className="text-[10px] text-slate-400 truncate">{user.email}</p>
+                    </div>
+                    <button onClick={() => handleTabClick('profile')} className="w-full text-left px-4 py-2 hover:bg-slate-50 text-xs cursor-pointer">My Profile</button>
+                    <button onClick={handleLogout} className="w-full text-left px-4 py-2 hover:bg-red-50 text-xs text-red-600 border-t cursor-pointer">Sign out</button>
                   </div>
-                ) : (
-                  <button onClick={() => { setRedirectTarget(null); handleTabClick('auth'); }} className={`px-5 py-2.5 text-base font-black rounded-xl shadow-md cursor-pointer transition-all ${activeTab === 'auth' ? 'bg-teal-600 text-white' : 'bg-slate-900 text-white hover:bg-slate-800'}`}>
-                    Login
-                  </button>
                 )}
               </div>
-            </div>
+            ) : (
+              <>
+                <button 
+                  onClick={() => handleTabClick('auth')} 
+                  className="text-slate-600 hover:text-slate-900 px-3 py-1.5 rounded-lg cursor-pointer"
+                >
+                  Log in
+                </button>
+                <button 
+                  onClick={() => handleTabClick('auth')} 
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-full shadow-sm transition-all cursor-pointer"
+                >
+                  Register
+                </button>
+              </>
+            )}
           </div>
+
         </nav>
 
+        {/* 🎓 2. DYNAMIC PAGE ROUTING */}
         <main>
-          {activeTab === 'find' && <FindTutors user={user} setActiveTab={setActiveTab} redirectTarget={redirectTarget} setRedirectTarget={setRedirectTarget} />}
-          {activeTab === 'bookings' && (user ? <MyBookings user={user} /> : <Auth setUser={setUser} setActiveTab={setActiveTab} redirectTarget={redirectTarget} setRedirectTarget={setRedirectTarget} fallbackTab="bookings" />)}
-          {activeTab === 'add' && (user ? <AddTutor user={user} /> : <Auth setUser={setUser} setActiveTab={setActiveTab} redirectTarget={redirectTarget} setRedirectTarget={setRedirectTarget} fallbackTab="add" customRole="tutor" />)}
-          {activeTab === 'auth' && <Auth setUser={setUser} setActiveTab={setActiveTab} redirectTarget={redirectTarget} setRedirectTarget={setRedirectTarget} />}
+          {activeTab === 'home' && <Home setActiveTab={setActiveTab} />}
+          {activeTab === 'find' && <FindTutors user={user} setActiveTab={setActiveTab} />}
+          {activeTab === 'bookings' && (user ? <MyBookings user={user} /> : <Auth setUser={setUser} setActiveTab={setActiveTab} />)}
+          {activeTab === 'add' && (user ? <AddTutor user={user} setActiveTab={setActiveTab} /> : <Auth setUser={setUser} setActiveTab={setActiveTab} />)}
+          {activeTab === 'auth' && <Auth setUser={setUser} setActiveTab={setActiveTab} />}
           {activeTab === 'profile' && user && <Profile user={user} setUser={setUser} />}
         </main>
       </div>
+
+      {/* 🎓 3. FIGMA MATCHING DARK FOOTER */}
+      <footer className="bg-[#0b1329] text-slate-400 py-12 border-t border-slate-800 text-xs font-medium">
+        <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 md:grid-cols-4 gap-8">
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <div className="w-6 h-6 rounded bg-blue-600 text-white flex items-center justify-center font-black text-xs">🎓</div>
+              <span className="text-lg font-black text-white tracking-tight">MediQueue</span>
+            </div>
+            <p className="leading-relaxed text-slate-400 text-xs">Connecting students with expert tutors for a smarter, more organized learning experience.</p>
+          </div>
+          <div>
+            <h4 className="font-black text-white uppercase tracking-wider mb-3 text-[11px]">Learning Services</h4>
+            <ul className="space-y-2 text-slate-400">
+              <li><button onClick={() => handleTabClick('find')} className="hover:text-white cursor-pointer">Browse Tutors</button></li>
+              <li><button onClick={() => handleTabClick('home')} className="hover:text-white cursor-pointer">Book a Session</button></li>
+            </ul>
+          </div>
+          <div>
+            <h4 className="font-black text-white uppercase tracking-wider mb-3 text-[11px]">Contact</h4>
+            <p className="hover:text-white cursor-pointer">✉ support@mediqueue.edu</p>
+            <p className="mt-1">📞 +1 (800) 555-LEARN</p>
+            <p className="mt-1">📍 123 Campus Drive, Boston MA</p>
+          </div>
+          <div>
+            <h4 className="font-black text-white uppercase tracking-wider mb-3 text-[11px]">Follow Us</h4>
+            <div className="flex gap-3 text-white font-bold">
+              <span className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center hover:bg-blue-600 cursor-pointer transition-all">f</span>
+              <span className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center hover:bg-blue-600 cursor-pointer transition-all">x</span>
+              <span className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center hover:bg-blue-600 cursor-pointer transition-all">in</span>
+            </div>
+          </div>
+        </div>
+        <div className="max-w-7xl mx-auto px-6 mt-10 pt-4 border-t border-slate-800/80 flex justify-between items-center text-slate-500 text-[11px]">
+          <p>&copy; 2026 MediQueue. All rights reserved.</p>
+          <div className="flex gap-4">
+            <span className="hover:underline cursor-pointer">Privacy Policy</span>
+            <span className="hover:underline cursor-pointer">Terms of Service</span>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }
