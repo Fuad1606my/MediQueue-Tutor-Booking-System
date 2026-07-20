@@ -1,149 +1,107 @@
 import React, { useEffect, useState } from 'react';
-import { Search, Globe, Star, ArrowUpRight, BookOpen, Loader2, X, Clock as ClockIcon } from 'lucide-react';
+import { Search, Star, MapPin, Clock } from 'lucide-react';
 import axios from 'axios';
 import Swal from 'sweetalert2';
 
-const FindTutors = ({ user, setActiveTab, redirectTarget, setRedirectTarget }) => {
+const FindTutors = ({ user }) => {
   const [tutors, setTutors] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [search, setSearch] = useState('');
   const [selectedTutor, setSelectedTutor] = useState(null);
-  const [viewDetailsTutor, setViewDetailsTutor] = useState(null);
 
   useEffect(() => {
-    axios.get('http://localhost:5000/tutors').then(res => {
-      setTutors(res.data);
-      setLoading(false);
-    });
+    axios.get('http://localhost:5000/tutors').then(res => setTutors(res.data));
   }, []);
 
-  useEffect(() => {
-    if (user && redirectTarget && redirectTarget.type === 'book') {
-      const saved = tutors.find(t => t._id === redirectTarget.tutorId);
-      if (saved) setSelectedTutor(saved);
-      setRedirectTarget(null);
-    }
-  }, [user, tutors, redirectTarget]);
+  const filtered = tutors.filter(t => 
+    t.name?.toLowerCase().includes(search.toLowerCase()) || 
+    t.language?.toLowerCase().includes(search.toLowerCase())
+  );
 
-  const filtered = tutors.filter(t => t.name.toLowerCase().includes(searchTerm.toLowerCase()) || t.language.toLowerCase().includes(searchTerm.toLowerCase()));
-
-  const handleBookingClick = (tutor) => {
-    if (!user) {
-      setRedirectTarget({ type: 'book', tutorId: tutor._id });
-      setActiveTab('auth');
-    } else {
-      setSelectedTutor(tutor);
-    }
-  };
-
-  const handleBookingSubmit = async (e) => {
+  const handleBooking = async (e) => {
     e.preventDefault();
-    const form = e.target;
-    const now = new Date();
-    
-    const bookingInfo = {
-      tutorId: selectedTutor._id,
+    const token = `MQ-${Date.now().toString().slice(-6)}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+    const bookingData = {
       tutorName: selectedTutor.name,
       tutorEmail: selectedTutor.email,
-      tutorDescription: selectedTutor.description,
+      studentName: user?.name || 'Student',
+      studentEmail: user?.email,
       language: selectedTutor.language,
       price: selectedTutor.price,
-      currency: selectedTutor.currency,
-      feeType: selectedTutor.feeType,
-      studentName: form.studentName.value,
-      studentEmail: form.studentEmail.value,
-      bookingDate: form.bookingDate.value,
+      sessionToken: token,
+      bookingDate: e.target.date.value,
       timeSlot: selectedTutor.timeSlot,
-      createdAt: now.toLocaleDateString() + ' ' + now.toLocaleTimeString(),
-      status: "pending"
+      status: 'accepted'
     };
 
     try {
-      await axios.post('http://localhost:5000/bookings', bookingInfo);
-      Swal.fire('🎉 Request Placed Successfully!', 'Awaiting verification response.', 'success');
+      await axios.post('http://localhost:5000/bookings', bookingData);
       setSelectedTutor(null);
-    } catch (error) {
-      Swal.fire('Oops', 'Submission failed.', 'error');
+      Swal.fire({
+        title: 'Session Booked!',
+        html: `<p>Your Session Token:</p><b class="text-blue-600 font-mono text-lg">${token}</b>`,
+        icon: 'success'
+      });
+    } catch (err) {
+      Swal.fire('Error', 'Booking failed', 'error');
     }
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 py-12 px-4 font-sans">
-      <div className="max-w-7xl mx-auto">
-        <div className="max-w-xl mx-auto mb-12 relative">
-          <div className="absolute inset-y-0 left-0 pl-4 flex items-center text-slate-400"><Search className="w-5 h-5" /></div>
-          <input type="text" placeholder="Search criteria..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full pl-12 pr-4 py-4 bg-white border border-slate-300 shadow-md rounded-2xl text-slate-800 font-bold" />
-        </div>
-
-        {loading ? <div className="text-center py-20"><Loader2 className="w-10 h-10 animate-spin text-teal-600 mx-auto" /></div> : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {filtered.map(t => (
-              <div key={t._id} className="bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden flex flex-col justify-between group">
-                <div className="p-6 cursor-pointer" onClick={() => setViewDetailsTutor(t)}>
-                  <div className="flex items-center gap-4">
-                    <img src={t.image} alt="" className="w-20 h-20 object-cover rounded-2xl border-2 border-teal-500 shadow-sm" onError={(e) => e.target.src='https://i.ibb.co.com/mC384Yx/male-avatar.png'} />
-                    <div>
-                      <h3 className="text-xl font-black text-slate-900 group-hover:text-teal-600 transition-colors">{t.name}</h3>
-                      <p className="text-sm font-bold text-slate-500 mb-1">{t.email}</p>
-                      <div className="flex items-center gap-1 text-amber-600 bg-amber-50 px-2.5 py-0.5 rounded-lg text-xs font-black"><Star className="w-3.5 h-3.5 fill-current" /> 5.0</div>
-                    </div>
-                  </div>
-                  <p className="mt-4 text-base font-bold text-slate-800 line-clamp-2">{t.description}</p>
-                  <p className="text-sm font-black text-slate-600 mt-2 flex items-center gap-1"><ClockIcon className="w-4 h-4 text-teal-600" /> Slot: {t.timeSlot}</p>
-                  <div className="mt-4 flex flex-wrap gap-2">
-                    <span className="px-3 py-1 bg-slate-100 border text-xs font-black text-slate-800 rounded-xl">{t.language}</span>
-                    <span className="px-3 py-1 bg-teal-50 border border-teal-200 text-xs font-black text-teal-900 rounded-xl">{t.currency === 'BDT' ? '৳' : '$'}{t.price} / {t.feeType}</span>
-                  </div>
-                </div>
-                <div className="p-6 pt-0">
-                  {user?.role === 'tutor' ? (
-                    <button onClick={() => setViewDetailsTutor(t)} className="w-full py-3 bg-slate-800 text-white font-black rounded-xl text-center cursor-pointer">Details View</button>
-                  ) : (
-                    <button onClick={() => handleBookingClick(t)} className="w-full py-3 bg-slate-900 text-white font-black rounded-xl text-center cursor-pointer">Book Appointment</button>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* --- বড় হাই-কন্ট্রাস্ট ডিটেইলস মডাল --- */}
-        {viewDetailsTutor && (
-          <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-md flex justify-center items-center z-50 p-4">
-            <div className="bg-white rounded-3xl shadow-2xl max-w-2xl w-full p-8 relative max-h-[92vh] overflow-y-auto border-4 border-slate-800">
-              <button onClick={() => setViewDetailsTutor(null)} className="absolute top-5 right-5 text-red-600 bg-red-50 p-3 rounded-full border-2 border-red-500 cursor-pointer shadow-md">
-                <X className="w-7 h-7 stroke-[4]" />
-              </button>
-              <img src={viewDetailsTutor.image} alt="" className="w-full h-80 object-contain rounded-2xl bg-slate-100 border" onError={(e) => e.target.src='https://i.ibb.co.com/mC384Yx/male-avatar.png'} />
-              <h3 className="text-3xl font-black text-slate-900 mt-4">{viewDetailsTutor.name}</h3>
-              <p className="text-base font-black text-teal-600 mb-2">{viewDetailsTutor.email}</p>
-              <div className="bg-slate-50 border p-4 rounded-xl font-bold text-slate-800 space-y-2">
-                <p><span className="text-teal-700 font-black">Curriculum Scope:</span> {viewDetailsTutor.language}</p>
-                <p><span className="text-teal-700 font-black">Time Slot Option:</span> {viewDetailsTutor.timeSlot}</p>
-                <p><span className="text-teal-700 font-black">Tier Strategy:</span> {viewDetailsTutor.currency === 'BDT' ? '৳' : '$'}{viewDetailsTutor.price} per {viewDetailsTutor.feeType}</p>
-              </div>
-              <div className="pt-2"><h4 className="text-sm font-black text-slate-900 uppercase tracking-widest text-teal-700 mb-1">Full Biography</h4><p className="text-lg font-bold text-slate-800 leading-relaxed border-l-4 border-teal-500 pl-4">{viewDetailsTutor.description}</p></div>
-            </div>
-          </div>
-        )}
-
-        {/* --- বুকিং ফর্ম মডাল --- */}
-        {selectedTutor && (
-          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex justify-center items-center z-50 p-4">
-            <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden relative border border-slate-300">
-              <button onClick={() => setSelectedTutor(null)} className="absolute top-4 right-4 text-slate-800 bg-slate-100 p-2 rounded-full cursor-pointer"><X className="w-5 h-5 stroke-[3]" /></button>
-              <div className="bg-gradient-to-r from-teal-600 to-cyan-600 p-6 text-white"><h3 className="text-xl font-black">Confirm Appointment Slot</h3></div>
-              <form onSubmit={handleBookingSubmit} className="p-6 space-y-4">
-                <div><label className="block text-sm font-bold text-slate-700 mb-1">Your Name</label><input type="text" name="studentName" defaultValue={user?.name || ''} required className="w-full px-4 py-2 border rounded-xl font-bold" /></div>
-                <div><label className="block text-sm font-bold text-slate-700 mb-1">Your Email</label><input type="email" name="studentEmail" defaultValue={user?.email || ''} required className="w-full px-4 py-2 border rounded-xl font-bold" /></div>
-                <div><label className="block text-sm font-bold text-slate-700 mb-1">Select Schedule Date</label><input type="date" name="bookingDate" required className="w-full px-4 py-2 border rounded-xl font-bold" /></div>
-                <div className="bg-slate-50 p-3 rounded-xl flex justify-between items-center text-sm font-black border"><span>Assigned Slot:</span><span className="text-teal-600">{selectedTutor.timeSlot}</span></div>
-                <button type="submit" className="w-full py-3 bg-teal-600 text-white font-black rounded-xl text-center cursor-pointer">Finalize Schedule</button>
-              </form>
-            </div>
-          </div>
-        )}
+    <div className="min-h-screen bg-slate-50 py-10 px-4 md:px-8 max-w-7xl mx-auto space-y-8 font-sans">
+      <div>
+        <h1 className="text-3xl font-black text-slate-900">Browse Tutors</h1>
+        <p className="text-xs text-slate-500 font-bold mt-1">Find your perfect tutor from our network of vetted experts.</p>
       </div>
+
+      <div className="relative max-w-md">
+        <Search className="w-4 h-4 absolute left-3.5 top-3 text-slate-400" />
+        <input 
+          type="text" 
+          placeholder="Search by name or subject..." 
+          value={search} 
+          onChange={(e) => setSearch(e.target.value)} 
+          className="w-full pl-10 pr-4 py-2 bg-white border border-slate-300 rounded-xl text-sm font-bold text-slate-800" 
+        />
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {filtered.map(t => (
+          <div key={t._id} className="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 space-y-4 flex flex-col justify-between relative">
+            <span className={`absolute top-3 right-3 px-2 py-0.5 text-[10px] font-black rounded text-white ${t.teachingMode === 'Online' ? 'bg-cyan-600' : 'bg-blue-600'}`}>
+              {t.teachingMode || 'Online'}
+            </span>
+            <img src={t.image || '/male-avatar.jpg'} alt="" className="w-full h-44 object-cover rounded-xl bg-slate-100" onError={(e)=>e.target.src='/male-avatar.jpg'} />
+            <div>
+              <h3 className="text-lg font-black text-slate-900">{t.name}</h3>
+              <p className="text-xs font-black text-blue-600">{t.language}</p>
+              <div className="flex items-center gap-1 text-amber-500 text-xs font-black mt-1"><Star className="w-3.5 h-3.5 fill-current" /> 4.9</div>
+            </div>
+            <div className="flex justify-between items-center border-t pt-3">
+              <span className="text-xl font-black text-slate-900">${t.price}<span className="text-xs text-slate-500">/hr</span></span>
+              <button onClick={() => setSelectedTutor(t)} className="px-4 py-2 bg-blue-600 text-white font-black text-xs rounded-xl hover:bg-blue-700 cursor-pointer">
+                Book Session
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Booking Modal */}
+      {selectedTutor && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-3xl p-6 max-w-sm w-full space-y-4 border">
+            <h3 className="text-xl font-black text-slate-900">Book Session</h3>
+            <p className="text-xs text-slate-500 font-bold">Tutor: <span className="text-blue-600">{selectedTutor.name}</span></p>
+            <form onSubmit={handleBooking} className="space-y-3">
+              <div><label className="text-xs font-black">Session Date</label><input type="date" name="date" required className="w-full p-2 border rounded-xl text-xs font-bold mt-1" /></div>
+              <div className="flex gap-2 pt-2">
+                <button type="button" onClick={() => setSelectedTutor(null)} className="w-1/2 py-2 bg-slate-100 rounded-xl text-xs font-black cursor-pointer">Cancel</button>
+                <button type="submit" className="w-1/2 py-2 bg-blue-600 text-white rounded-xl text-xs font-black cursor-pointer">Confirm</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
