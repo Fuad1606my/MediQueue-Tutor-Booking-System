@@ -16,7 +16,8 @@ const FindTutors = ({ user }) => {
 
   const filtered = tutors.filter(t => 
     t.name?.toLowerCase().includes(search.toLowerCase()) || 
-    t.language?.toLowerCase().includes(search.toLowerCase())
+    t.language?.toLowerCase().includes(search.toLowerCase()) ||
+    t.subject?.toLowerCase().includes(search.toLowerCase())
   );
 
   const handleBooking = async (e) => {
@@ -57,7 +58,7 @@ const FindTutors = ({ user }) => {
         <p className="text-xs text-slate-500 font-bold mt-1">Find your perfect tutor from our network of vetted experts.</p>
       </div>
 
-      {/* Search Input Filter */}
+      {/* Search Bar */}
       <div className="relative max-w-md">
         <Search className="w-4 h-4 absolute left-3.5 top-3 text-slate-400" />
         <input 
@@ -69,45 +70,47 @@ const FindTutors = ({ user }) => {
         />
       </div>
 
-      {/* 🟢 প্যারেন্ট ডিভ (Parent Div): ৩-কলাম গ্রিড লেআউট */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {/* 🟢 ৩-কলাম গ্রিড কন্টেইনার (Equal Height Grid Layout) */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-stretch">
         {filtered.map(t => (
-          <div key={t._id} className="bg-white rounded-2xl shadow-sm hover:shadow-md border border-slate-200 p-5 flex flex-col justify-between relative overflow-hidden transition-all">
+          <div key={t._id} className="bg-white rounded-2xl shadow-sm hover:shadow-md border border-slate-200 p-5 flex flex-col justify-between h-full relative overflow-hidden transition-all">
             
-            {/* Teaching Mode Badge */}
-            <span className={`absolute top-3 right-3 px-2.5 py-1 text-[10px] font-black rounded-lg text-white z-10 ${t.teachingMode === 'Online' ? 'bg-cyan-600' : 'bg-blue-600'}`}>
-              {t.teachingMode || 'Online'}
-            </span>
+            <div>
+              {/* Teaching Mode Badge */}
+              <span className={`absolute top-3 right-3 px-2.5 py-1 text-[10px] font-black rounded-lg text-white z-10 ${t.teachingMode === 'Online' ? 'bg-cyan-600' : 'bg-blue-600'}`}>
+                {t.teachingMode || 'Online'}
+              </span>
 
-            {/* 🟢 ইমেজ স্টাইলিং (Fixed Size Picture) */}
-            <div className="w-full h-48 rounded-xl overflow-hidden bg-slate-100 border mb-4">
-              <img 
-                src={t.image || '/male-avatar.jpg'} 
-                alt={t.name} 
-                className="w-full h-full object-cover" 
-                onError={(e) => { e.target.src = '/male-avatar.jpg'; }} 
-              />
+              {/* 🟢 ছবি সাইজিং ও এরর হ্যান্ডলিং (Aspect Square / Aspect Video Boundary) */}
+              <div className="w-full h-48 rounded-xl overflow-hidden bg-slate-100 border mb-4">
+                <img 
+                  src={t.image || '/male-avatar.jpg'} 
+                  alt={t.name} 
+                  className="w-full h-full object-cover" 
+                  onError={(e) => { e.target.src = '/male-avatar.jpg'; }} 
+                />
+              </div>
+
+              {/* Tutor Info */}
+              <div className="space-y-2">
+                <div>
+                  <h3 className="text-lg font-black text-slate-900 truncate">{t.name}</h3>
+                  <p className="text-xs font-black text-blue-600">{t.language || t.subject}</p>
+                </div>
+
+                <div className="flex items-center gap-1 text-amber-500 text-xs font-black">
+                  <Star className="w-3.5 h-3.5 fill-current" /> 4.9 <span className="text-slate-400 font-bold">(112 reviews)</span>
+                </div>
+
+                <div className="space-y-1 text-xs font-bold text-slate-500 pt-1">
+                  <p className="flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5 text-slate-400" /> {t.location || 'Dhaka, BD'}</p>
+                  <p className="flex items-center gap-1.5"><Clock className="w-3.5 h-3.5 text-slate-400" /> {t.timeSlot || 'Mon - Fri, 5:00 PM'}</p>
+                </div>
+              </div>
             </div>
 
-            {/* Tutor Information */}
-            <div className="space-y-2">
-              <div>
-                <h3 className="text-lg font-black text-slate-900 truncate">{t.name}</h3>
-                <p className="text-xs font-black text-blue-600">{t.language || t.subject}</p>
-              </div>
-
-              <div className="flex items-center gap-1 text-amber-500 text-xs font-black">
-                <Star className="w-3.5 h-3.5 fill-current" /> 4.9 <span className="text-slate-400 font-bold">(112 reviews)</span>
-              </div>
-
-              <div className="space-y-1 text-xs font-bold text-slate-500 pt-1">
-                <p className="flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5 text-slate-400" /> {t.location || 'Dhaka, BD'}</p>
-                <p className="flex items-center gap-1.5"><Clock className="w-3.5 h-3.5 text-slate-400" /> {t.timeSlot || 'Mon - Fri, 5:00 PM'}</p>
-              </div>
-            </div>
-
-            {/* Card Footer: Price & Book Button */}
-            <div className="flex justify-between items-center border-t border-slate-100 pt-4 mt-4">
+            {/* 🟢 কার্ডের নিচের ইকুয়াল হাইট ফুটার বাটন পজিশন */}
+            <div className="flex justify-between items-center border-t border-slate-100 pt-4 mt-6">
               <span className="text-xl font-black text-slate-900">${t.price || 45}<span className="text-xs text-slate-500 font-bold">/hr</span></span>
               <button onClick={() => setSelectedTutor(t)} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-black text-xs rounded-xl shadow transition-all cursor-pointer">
                 Book Session

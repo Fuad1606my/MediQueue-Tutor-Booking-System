@@ -5,10 +5,11 @@ export default {
     "./src/**/*.{js,ts,jsx,tsx}",
   ],
   theme: {
-    extend: {},
-  ],
-  plugins: [require("daisyui")],
-  daisyui: {
-    themes: ["light", "dark"], // লাইট ও ডার্ক থিম টগলিং চ্যালেঞ্জের জন্য[cite: 1]
+    extend: {
+      fontFamily: {
+        sans: ['Inter', 'sans-serif'],
+      },
+    },
   },
+  plugins: [],
 }

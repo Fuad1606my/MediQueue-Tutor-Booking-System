@@ -1,3 +1,4 @@
+import './index.css';
 import React, { useState, useEffect } from 'react';
 import AddTutor from './pages/AddTutor';
 import FindTutors from './pages/FindTutors';
