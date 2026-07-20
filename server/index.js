@@ -168,5 +168,110 @@ app.delete('/bookings/:id', async (req, res) => {
     res.status(500).send({ message: "Delete booking failed" });
   }
 });
+// --- Figma Tutors Auto-Seed API Endpoint (Fixed Variable Scope) ---
+app.get('/seed-figma-tutors', async (req, res) => {
+  try {
+    const figmaTutors = [
+      {
+        name: "Dr. Sarah Mitchell",
+        language: "Mathematics",
+        price: 45,
+        institution: "MIT",
+        experience: "8 years",
+        location: "Cambridge, MA",
+        teachingMode: "Online",
+        availableDays: "Mon – Fri",
+        timeSlot: "4:00 PM – 8:00 PM",
+        totalSlots: 8,
+        reviews: 127,
+        about: "PhD in Applied Mathematics from MIT. Specialises in calculus, linear algebra, and statistics.",
+        image: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=500"
+      },
+      {
+        name: "Prof. James Chen",
+        language: "Physics",
+        price: 50,
+        institution: "Stanford University",
+        experience: "12 years",
+        location: "Palo Alto, CA",
+        teachingMode: "Both",
+        availableDays: "Tue – Sat",
+        timeSlot: "5:00 PM – 9:00 PM",
+        totalSlots: 6,
+        reviews: 98,
+        about: "Specializing in Quantum Physics and Thermodynamics with 12+ years of academic research.",
+        image: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=500"
+      },
+      {
+        name: "Ms. Aisha Rahman",
+        language: "English Literature",
+        price: 35,
+        institution: "Oxford University",
+        experience: "6 years",
+        location: "Boston, MA",
+        teachingMode: "Online",
+        availableDays: "Mon – Thu",
+        timeSlot: "3:00 PM – 7:00 PM",
+        totalSlots: 10,
+        reviews: 84,
+        about: "Oxford graduate passionate about creative writing, essays, and classical literature analysis.",
+        image: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=500"
+      },
+      {
+        name: "Dr. Carlos Rivera",
+        language: "Chemistry",
+        price: 45,
+        institution: "Caltech",
+        experience: "9 years",
+        location: "Pasadena, CA",
+        teachingMode: "Both",
+        availableDays: "Wed – Sun",
+        timeSlot: "2:00 PM – 6:00 PM",
+        totalSlots: 4,
+        reviews: 112,
+        about: "Organic Chemistry specialist providing simplified step-by-step problem-solving methods.",
+        image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=500"
+      },
+      {
+        name: "Mr. Jhankar Mahbub",
+        language: "Web Development",
+        price: 40,
+        institution: "Programming Hero",
+        experience: "10 years",
+        location: "Dhaka, BD",
+        teachingMode: "Online",
+        availableDays: "Mon – Fri",
+        timeSlot: "6:00 PM – 10:00 PM",
+        totalSlots: 12,
+        reviews: 215,
+        about: "Senior Web Developer teaching JavaScript, React, and Node.js in an engaging and fun way.",
+        image: "https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?q=80&w=500"
+      },
+      {
+        name: "Dr. Priya Sharma",
+        language: "Biology",
+        price: 42,
+        institution: "Johns Hopkins",
+        experience: "7 years",
+        location: "Baltimore, MD",
+        teachingMode: "Both",
+        availableDays: "Tue – Sat",
+        timeSlot: "4:00 PM – 8:00 PM",
+        totalSlots: 7,
+        reviews: 91,
+        about: "Biomedical researcher making Cell Biology and Genetics intuitive and easy to master.",
+        image: "https://images.unsplash.com/photo-1580489944761-15a19d654956?q=80&w=500"
+      }
+    ];
 
+    // MongoClient এর সরাসরি কানেকশন ধরা হচ্ছে
+    const targetCollection = client.db('mediqueue').collection('tutors');
+    await targetCollection.deleteMany({});
+    await targetCollection.insertMany(figmaTutors);
+
+    res.json({ success: true, message: "Successfully replaced database with official Figma Tutors data!" });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
 app.listen(port, () => console.log(`🚀 Server is listening on port: ${port}`));

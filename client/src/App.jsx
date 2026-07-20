@@ -153,21 +153,28 @@ function App() {
         </nav>
 
         {/* Main Content */}
-        <main>
-          {activeTab === 'home' && <Home setActiveTab={setActiveTab} />}
-          {activeTab === 'find' && (
-            <FindTutors 
-              user={user} 
-              setActiveTab={setActiveTab} 
-              setRedirectTarget={setRedirectTarget} 
-              setAuthMode={setAuthMode}
-            />
-          )}
-          {activeTab === 'bookings' && (user ? <MyBookings user={user} /> : <Auth setUser={setUser} setActiveTab={setActiveTab} redirectTarget={redirectTarget} setRedirectTarget={setRedirectTarget} authMode={authMode} setAuthMode={setAuthMode} />)}
-          {activeTab === 'add' && (user ? <AddTutor user={user} setActiveTab={setActiveTab} /> : <Auth setUser={setUser} setActiveTab={setActiveTab} redirectTarget={redirectTarget} setRedirectTarget={setRedirectTarget} authMode={authMode} setAuthMode={setAuthMode} />)}
-          {activeTab === 'auth' && <Auth setUser={setUser} setActiveTab={setActiveTab} redirectTarget={redirectTarget} setRedirectTarget={setRedirectTarget} authMode={authMode} setAuthMode={setAuthMode} />}
-          {activeTab === 'profile' && user && <Profile user={user} setUser={setUser} />}
-        </main>
+  <main>
+  {activeTab === 'home' && (
+    <Home 
+      user={user}
+      setActiveTab={setActiveTab} 
+      setRedirectTarget={setRedirectTarget} 
+      setAuthMode={setAuthMode} 
+    />
+  )}
+  {activeTab === 'find' && (
+    <FindTutors 
+      user={user} 
+      setActiveTab={setActiveTab} 
+      setRedirectTarget={setRedirectTarget} 
+      setAuthMode={setAuthMode}
+    />
+  )}
+  {activeTab === 'bookings' && (user ? <MyBookings user={user} /> : <Auth setUser={setUser} setActiveTab={setActiveTab} redirectTarget={redirectTarget} setRedirectTarget={setRedirectTarget} authMode={authMode} setAuthMode={setAuthMode} />)}
+  {activeTab === 'add' && (user ? <AddTutor user={user} setActiveTab={setActiveTab} /> : <Auth setUser={setUser} setActiveTab={setActiveTab} redirectTarget={redirectTarget} setRedirectTarget={setRedirectTarget} authMode={authMode} setAuthMode={setAuthMode} />)}
+  {activeTab === 'auth' && <Auth setUser={setUser} setActiveTab={setActiveTab} redirectTarget={redirectTarget} setRedirectTarget={setRedirectTarget} authMode={authMode} setAuthMode={setAuthMode} />}
+  {activeTab === 'profile' && user && <Profile user={user} setUser={setUser} />}
+</main>
       </div>
 
       {/* Footer */}
