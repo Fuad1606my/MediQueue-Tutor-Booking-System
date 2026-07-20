@@ -2,6 +2,8 @@ import React from 'react';
 import axios from 'axios';
 import Swal from 'sweetalert2';
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
 const Auth = ({ setUser, setActiveTab, redirectTarget, setRedirectTarget, authMode, setAuthMode }) => {
   const isSignUp = authMode === 'register';
 
@@ -61,7 +63,7 @@ const Auth = ({ setUser, setActiveTab, redirectTarget, setRedirectTarget, authMo
       };
 
       try {
-        const res = await axios.post('http://localhost:5000/users/signup', userData);
+        const res = await axios.post(`${API_URL}/users/signup`, userData);
         if (res.status === 201) {
           Swal.fire('Success', 'Account created! Please sign in.', 'success');
           setAuthMode('login');
@@ -71,7 +73,7 @@ const Auth = ({ setUser, setActiveTab, redirectTarget, setRedirectTarget, authMo
       }
     } else {
       try {
-        const res = await axios.post('http://localhost:5000/users/signin', { email: emailInput, password: passwordInput });
+        const res = await axios.post(`${API_URL}/users/signin`, { email: emailInput, password: passwordInput });
         if (res.data.email) {
           setUser(res.data);
           Swal.fire('Welcome Back!', 'Logged in successfully.', 'success');

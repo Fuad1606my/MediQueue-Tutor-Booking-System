@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import Swal from 'sweetalert2';
-import { Edit2, Trash2, MapPin, Clock, Star } from 'lucide-react';
+import { Trash2 } from 'lucide-react';
+
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 const MyTutors = ({ user }) => {
   const [myTutors, setMyTutors] = useState([]);
@@ -10,7 +12,7 @@ const MyTutors = ({ user }) => {
   const fetchMyTutors = () => {
     if (!user?.email) return;
     setLoading(true);
-    axios.get(`http://localhost:5000/tutors?email=${user.email}`)
+    axios.get(`${API_URL}/tutors?email=${user.email}`)
       .then(res => {
         setMyTutors(res.data || []);
         setLoading(false);
@@ -36,7 +38,7 @@ const MyTutors = ({ user }) => {
       confirmButtonText: 'Yes, Delete'
     }).then((result) => {
       if (result.isConfirmed) {
-        axios.delete(`http://localhost:5000/tutors/${id}`)
+        axios.delete(`${API_URL}/tutors/${id}`)
           .then(() => {
             Swal.fire('Deleted!', 'Tutor profile removed.', 'success');
             fetchMyTutors();

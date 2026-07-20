@@ -5,6 +5,8 @@ import axios from 'axios';
 import TutorDetails from './TutorDetails';
 import { masterTutorsList } from './FindTutors';
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
 const slides = [
   {
     title: "Unlock Your Academic Potential",
@@ -60,7 +62,7 @@ const Home = ({ user, setActiveTab, setRedirectTarget, setAuthMode }) => {
   }, []);
 
   useEffect(() => {
-    axios.get('http://localhost:5000/tutors')
+    axios.get(`${API_URL}/tutors`)
       .then(res => {
         if (res.data && res.data.length > 0) {
           const cleaned = res.data.map(t => ({ ...t, price: t.price > 500 ? 40 : t.price }));
@@ -92,7 +94,6 @@ const Home = ({ user, setActiveTab, setRedirectTarget, setAuthMode }) => {
   return (
     <div className="font-sans bg-slate-50 space-y-20 pb-0">
       
-      {/* 🎓 1. HERO BANNER CAROUSEL */}
       <div className="relative h-[480px] md:h-[520px] overflow-hidden w-full shadow-lg group bg-slate-900">
         <AnimatePresence mode="wait">
           <motion.div 
@@ -140,7 +141,6 @@ const Home = ({ user, setActiveTab, setRedirectTarget, setAuthMode }) => {
         </div>
       </div>
 
-      {/* 🎓 2. AVAILABLE TUTORS SECTION */}
       <div className="max-w-7xl mx-auto px-4 md:px-8 space-y-6">
         <div className="flex justify-between items-end border-b border-slate-200 pb-3">
           <div>
@@ -186,7 +186,6 @@ const Home = ({ user, setActiveTab, setRedirectTarget, setAuthMode }) => {
         </div>
       </div>
 
-      {/* 🎓 3. FIGMA: SIMPLE PROCESS (HOW MEDIQUEUE WORKS) */}
       <div className="max-w-7xl mx-auto px-4 md:px-8 space-y-10">
         <div className="text-center space-y-1">
           <span className="text-[11px] font-black text-blue-600 uppercase tracking-widest">
@@ -196,12 +195,8 @@ const Home = ({ user, setActiveTab, setRedirectTarget, setAuthMode }) => {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          
-          {/* Card 01 */}
           <div className="bg-white p-8 rounded-3xl border border-slate-200/80 shadow-sm relative overflow-hidden space-y-5 hover:shadow-md transition-all">
-            <span className="text-7xl font-black text-slate-100/80 absolute right-6 top-4 select-none pointer-events-none">
-              01
-            </span>
+            <span className="text-7xl font-black text-slate-100/80 absolute right-6 top-4 select-none pointer-events-none">01</span>
             <div className="w-12 h-12 rounded-2xl bg-blue-50 border border-blue-100 text-blue-600 flex items-center justify-center relative z-10">
               <Search className="w-5 h-5" />
             </div>
@@ -213,11 +208,8 @@ const Home = ({ user, setActiveTab, setRedirectTarget, setAuthMode }) => {
             </div>
           </div>
 
-          {/* Card 02 */}
           <div className="bg-white p-8 rounded-3xl border border-slate-200/80 shadow-sm relative overflow-hidden space-y-5 hover:shadow-md transition-all">
-            <span className="text-7xl font-black text-slate-100/80 absolute right-6 top-4 select-none pointer-events-none">
-              02
-            </span>
+            <span className="text-7xl font-black text-slate-100/80 absolute right-6 top-4 select-none pointer-events-none">02</span>
             <div className="w-12 h-12 rounded-2xl bg-blue-50 border border-blue-100 text-blue-600 flex items-center justify-center relative z-10">
               <Calendar className="w-5 h-5" />
             </div>
@@ -229,11 +221,8 @@ const Home = ({ user, setActiveTab, setRedirectTarget, setAuthMode }) => {
             </div>
           </div>
 
-          {/* Card 03 */}
           <div className="bg-white p-8 rounded-3xl border border-slate-200/80 shadow-sm relative overflow-hidden space-y-5 hover:shadow-md transition-all">
-            <span className="text-7xl font-black text-slate-100/80 absolute right-6 top-4 select-none pointer-events-none">
-              03
-            </span>
+            <span className="text-7xl font-black text-slate-100/80 absolute right-6 top-4 select-none pointer-events-none">03</span>
             <div className="w-12 h-12 rounded-2xl bg-blue-50 border border-blue-100 text-blue-600 flex items-center justify-center relative z-10">
               <BookOpen className="w-5 h-5" />
             </div>
@@ -244,11 +233,9 @@ const Home = ({ user, setActiveTab, setRedirectTarget, setAuthMode }) => {
               </p>
             </div>
           </div>
-
         </div>
       </div>
 
-      {/* 🎓 4. FIGMA: STUDENT STORIES (TESTIMONIALS) */}
       <div className="max-w-7xl mx-auto px-4 md:px-8 space-y-10">
         <div className="text-center space-y-1">
           <span className="text-[11px] font-black text-blue-600 uppercase tracking-widest">
@@ -283,7 +270,6 @@ const Home = ({ user, setActiveTab, setRedirectTarget, setAuthMode }) => {
         </div>
       </div>
 
-      {/* 🎓 5. FIGMA: VIBRANT BLUE STATS BANNER */}
       <div className="bg-blue-600 py-12 text-white">
         <div className="max-w-7xl mx-auto px-4 md:px-8 grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
           <div className="space-y-1">

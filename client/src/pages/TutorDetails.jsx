@@ -3,6 +3,8 @@ import { ArrowLeft, Star, Award, GraduationCap, MapPin, Monitor, Calendar, Clock
 import Swal from 'sweetalert2';
 import axios from 'axios';
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
 const TutorDetails = ({ tutor, user, onBack, setActiveTab, setRedirectTarget, setAuthMode }) => {
   const [showBookingModal, setShowBookingModal] = useState(false);
   const [isZoomed, setIsZoomed] = useState(false);
@@ -56,7 +58,7 @@ const TutorDetails = ({ tutor, user, onBack, setActiveTab, setRedirectTarget, se
     };
 
     try {
-      await axios.post('http://localhost:5000/bookings', bookingData);
+      await axios.post(`${API_URL}/bookings`, bookingData);
       setShowBookingModal(false);
       Swal.fire({
         title: 'Session Booked!',
@@ -80,8 +82,6 @@ const TutorDetails = ({ tutor, user, onBack, setActiveTab, setRedirectTarget, se
         <div className="p-8 pt-0 space-y-8 relative">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 -mt-20">
             <div className="flex flex-col md:flex-row items-start md:items-end gap-5">
-              
-              {/* 🖼️ Perfectly Positioned Avatar with Click-to-Zoom */}
               <div className="relative group/avatar cursor-pointer" onClick={() => setIsZoomed(true)}>
                 <img 
                   src={tutor.image || 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=800'} 
@@ -161,7 +161,6 @@ const TutorDetails = ({ tutor, user, onBack, setActiveTab, setRedirectTarget, se
         </div>
       </div>
 
-      {/* 🔍 FULL SIZE IMAGE LIGHTBOX */}
       {isZoomed && (
         <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setIsZoomed(false)}>
           <div className="relative bg-white p-3 rounded-3xl max-w-lg w-full shadow-2xl space-y-3" onClick={(e) => e.stopPropagation()}>

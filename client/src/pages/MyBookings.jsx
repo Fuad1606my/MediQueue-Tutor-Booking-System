@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import Swal from 'sweetalert2';
-import { Copy, Trash2, Calendar, Clock, DollarSign, CheckCircle } from 'lucide-react';
+import { Copy, Trash2, Calendar, Clock, CheckCircle } from 'lucide-react';
+
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 const MyBookings = ({ user }) => {
   const [bookings, setBookings] = useState([]);
@@ -10,7 +12,7 @@ const MyBookings = ({ user }) => {
   const fetchBookings = () => {
     if (!user?.email) return;
     setLoading(true);
-    axios.get(`http://localhost:5000/bookings?studentEmail=${user.email}`)
+    axios.get(`${API_URL}/bookings?studentEmail=${user.email}`)
       .then(res => {
         setBookings(res.data || []);
         setLoading(false);
@@ -48,7 +50,7 @@ const MyBookings = ({ user }) => {
       confirmButtonText: 'Yes, Cancel it'
     }).then((result) => {
       if (result.isConfirmed) {
-        axios.delete(`http://localhost:5000/bookings/${id}`)
+        axios.delete(`${API_URL}/bookings/${id}`)
           .then(() => {
             Swal.fire('Cancelled!', 'Your session has been cancelled.', 'success');
             fetchBookings();

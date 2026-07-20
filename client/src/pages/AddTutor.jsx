@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import axios from 'axios';
 import Swal from 'sweetalert2';
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
 const AddTutor = ({ user, setActiveTab }) => {
   const [formData, setFormData] = useState({
     name: user?.name || '',
@@ -34,7 +36,7 @@ const AddTutor = ({ user, setActiveTab }) => {
     };
 
     try {
-      await axios.post('http://localhost:5000/tutors', payload);
+      await axios.post(`${API_URL}/tutors`, payload);
       Swal.fire({
         title: 'Tutor Added!',
         text: 'Your tutoring profile has been published successfully.',

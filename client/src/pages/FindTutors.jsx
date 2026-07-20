@@ -3,6 +3,8 @@ import { Search, Star, MapPin, Clock, X, ZoomIn } from 'lucide-react';
 import axios from 'axios';
 import TutorDetails from './TutorDetails';
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
 export const masterTutorsList = [
   {
     _id: "t1",
@@ -109,29 +111,29 @@ export const masterTutorsList = [
   {
     _id: "t7",
     name: "Dr. Angela Yu",
-    language: "Computer Science",
-    subject: "Computer Science",
+    language: "English",
+    subject: "English",
     price: 55,
     institution: "London App Brewery",
     experience: "11 years",
-    location: "London, UK",
+    location: "Cambridge, MA",
     teachingMode: "Online",
     availableDays: "Mon – Fri",
     timeSlot: "2:00 PM – 6:00 PM",
     totalSlots: 9,
     reviews: 189,
-    about: "Lead Instructor teaching Full Stack Web Development and Python.",
+    about: "Lead Instructor teaching Full Stack Web Development and English Communications.",
     image: "https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?q=80&w=800"
   },
   {
     _id: "t8",
     name: "Hitesh Choudhary",
-    language: "JavaScript & Coding",
+    language: "English, Hindi",
     subject: "Computer Science",
     price: 38,
     institution: "Chai aur Code",
     experience: "9 years",
-    location: "Jaipur, IN",
+    location: "Cambridge, MA",
     teachingMode: "Online",
     availableDays: "Tue – Sun",
     timeSlot: "5:00 PM – 9:00 PM",
@@ -148,8 +150,8 @@ export const masterTutorsList = [
     price: 48,
     institution: "Pentagram Studio",
     experience: "15 years",
-    location: "New York, NY",
-    teachingMode: "Both",
+    location: "Cambridge, MA",
+    teachingMode: "Online",
     availableDays: "Mon – Thu",
     timeSlot: "10:00 AM – 2:00 PM",
     totalSlots: 5,
@@ -160,7 +162,7 @@ export const masterTutorsList = [
   {
     _id: "t10",
     name: "Jeson",
-    language: "Mathematics",
+    language: "MATH",
     subject: "Mathematics",
     price: 45,
     institution: "Harvard",
@@ -178,43 +180,60 @@ export const masterTutorsList = [
 
 const FindTutors = ({ user, setActiveTab, setRedirectTarget, setAuthMode }) => {
   const [tutors, setTutors] = useState(masterTutorsList);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [subjectFilter, setSubjectFilter] = useState('All');
   const [modeFilter, setModeFilter] = useState('All');
+  const [sortOrder, setSortOrder] = useState('default');
   const [activeTutorDetails, setActiveTutorDetails] = useState(null);
-  
-  // 🔍 Image Lightbox State
   const [zoomImage, setZoomImage] = useState(null);
 
   useEffect(() => {
-    axios.get('http://localhost:5000/tutors')
+    setLoading(true);
+    axios.get(`${API_URL}/tutors`)
       .then(res => {
         if (res.data && res.data.length > 0) {
-          const cleanedBackend = res.data.map(t => ({ ...t, price: t.price > 500 ? 40 : t.price }));
+          const cleanedBackend = res.data.map(t => ({
+            ...t,
+            price: t.price > 500 ? 40 : t.price,
+            teachingMode: t.teachingMode || t.mode || 'Online'
+          }));
           const mergedMap = new Map();
           masterTutorsList.forEach(item => mergedMap.set(item.name.toLowerCase(), item));
           cleanedBackend.forEach(item => mergedMap.set(item.name.toLowerCase(), item));
           setTutors(Array.from(mergedMap.values()));
         }
       })
-      .catch(() => console.log("Using unified tutors dataset"));
+      .catch(() => console.log("Using unified tutors dataset"))
+      .finally(() => {
+        setTimeout(() => setLoading(false), 500);
+      });
   }, []);
 
-  const filtered = tutors.filter(t => {
-    const matchesSearch = 
-      t.name?.toLowerCase().includes(search.toLowerCase()) || 
-      t.language?.toLowerCase().includes(search.toLowerCase()) ||
-      t.subject?.toLowerCase().includes(search.toLowerCase());
+  const processedTutors = tutors
+    .filter(t => {
+      const searchLower = search.trim().toLowerCase();
+      const subjectLower = subjectFilter.trim().toLowerCase();
+      const modeLower = modeFilter.trim().toLowerCase();
 
-    const matchesSubject = subjectFilter === 'All' || 
-      (t.subject && t.subject.toLowerCase() === subjectFilter.toLowerCase()) ||
-      (t.language && t.language.toLowerCase().includes(subjectFilter.toLowerCase()));
+      const matchesSearch = !searchLower || 
+        t.name?.toLowerCase().includes(searchLower) || 
+        t.language?.toLowerCase().includes(searchLower) ||
+        t.subject?.toLowerCase().includes(searchLower);
 
-    const matchesMode = modeFilter === 'All' || 
-      (t.teachingMode && t.teachingMode.toLowerCase() === modeFilter.toLowerCase());
+      const tutorSub = (t.subject || t.language || '').toLowerCase();
+      const matchesSubject = subjectFilter === 'All' || tutorSub.includes(subjectLower);
 
-    return matchesSearch && matchesSubject && matchesMode;
-  });
+      const tutorMode = (t.teachingMode || t.mode || 'Online').toLowerCase();
+      const matchesMode = modeFilter === 'All' || tutorMode === modeLower;
+
+      return matchesSearch && matchesSubject && matchesMode;
+    })
+    .sort((a, b) => {
+      if (sortOrder === 'lowToHigh') return a.price - b.price;
+      if (sortOrder === 'highToLow') return b.price - a.price;
+      return 0;
+    });
 
   if (activeTutorDetails) {
     return (
@@ -234,12 +253,11 @@ const FindTutors = ({ user, setActiveTab, setRedirectTarget, setAuthMode }) => {
       <div>
         <h1 className="text-3xl font-black text-slate-900">Browse Tutors</h1>
         <p className="text-xs text-slate-500 font-bold mt-1">
-          {filtered.length} tutors found
+          {loading ? 'Searching tutors...' : `${processedTutors.length} tutors found`}
         </p>
       </div>
 
-      {/* Filters Bar */}
-      <div className="flex flex-col md:flex-row gap-3 items-center justify-between">
+      <div className="flex flex-col lg:flex-row gap-3 items-center justify-between">
         <div className="relative flex-1 w-full">
           <Search className="w-4 h-4 absolute left-3.5 top-3.5 text-slate-400" />
           <input 
@@ -251,16 +269,16 @@ const FindTutors = ({ user, setActiveTab, setRedirectTarget, setAuthMode }) => {
           />
         </div>
 
-        <div className="flex gap-3 w-full md:w-auto">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 w-full lg:w-auto">
           <select 
             value={subjectFilter}
             onChange={(e) => setSubjectFilter(e.target.value)}
-            className="w-1/2 md:w-48 px-3 py-2.5 bg-slate-100/80 border border-slate-200/80 rounded-xl text-xs font-bold text-slate-700 focus:outline-none focus:bg-white focus:border-blue-500 cursor-pointer"
+            className="w-full px-3 py-2.5 bg-slate-100/80 border border-slate-200/80 rounded-xl text-xs font-bold text-slate-700 shadow-sm focus:outline-none focus:bg-white focus:border-blue-500 cursor-pointer"
           >
             <option value="All">All Subjects</option>
             <option value="Mathematics">Mathematics</option>
             <option value="Physics">Physics</option>
-            <option value="English Literature">English Literature</option>
+            <option value="English">English</option>
             <option value="Chemistry">Chemistry</option>
             <option value="Computer Science">Computer Science</option>
             <option value="Biology">Biology</option>
@@ -271,72 +289,97 @@ const FindTutors = ({ user, setActiveTab, setRedirectTarget, setAuthMode }) => {
           <select 
             value={modeFilter}
             onChange={(e) => setModeFilter(e.target.value)}
-            className="w-1/2 md:w-36 px-3 py-2.5 bg-slate-100/80 border border-slate-200/80 rounded-xl text-xs font-bold text-slate-700 focus:outline-none focus:bg-white focus:border-blue-500 cursor-pointer"
+            className="w-full px-3 py-2.5 bg-slate-100/80 border border-slate-200/80 rounded-xl text-xs font-bold text-slate-700 shadow-sm focus:outline-none focus:bg-white focus:border-blue-500 cursor-pointer"
           >
             <option value="All">All Modes</option>
             <option value="Online">Online</option>
             <option value="Offline">Offline</option>
             <option value="Both">Both</option>
           </select>
+
+          <select 
+            value={sortOrder}
+            onChange={(e) => setSortOrder(e.target.value)}
+            className="col-span-2 md:col-span-1 w-full px-3 py-2.5 bg-slate-100/80 border border-slate-200/80 rounded-xl text-xs font-bold text-slate-700 shadow-sm focus:outline-none focus:bg-white focus:border-blue-500 cursor-pointer"
+          >
+            <option value="default">Sort by Price</option>
+            <option value="lowToHigh">Price: Low to High</option>
+            <option value="highToLow">Price: High to Low</option>
+          </select>
         </div>
       </div>
 
-      {/* Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filtered.map(t => (
-          <div 
-            key={t._id || t.name} 
-            className="bg-white rounded-2xl shadow-sm hover:shadow-xl border border-slate-200 p-5 flex flex-col justify-between h-full relative overflow-hidden transition-all duration-300 hover:-translate-y-1 group"
-          >
-            <div>
-              <span className={`absolute top-3 right-3 px-2.5 py-1 text-[10px] font-black rounded-lg text-white z-10 ${t.teachingMode === 'Online' ? 'bg-cyan-600' : 'bg-blue-600'}`}>
-                {t.teachingMode || 'Online'}
-              </span>
+      {loading ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {[...Array(6)].map((_, i) => (
+            <div key={i} className="bg-white rounded-2xl border border-slate-200 p-5 space-y-4 animate-pulse">
+              <div className="w-full aspect-[4/3] rounded-xl bg-slate-200"></div>
+              <div className="space-y-2">
+                <div className="h-5 bg-slate-200 rounded w-2/3"></div>
+                <div className="h-3 bg-slate-200 rounded w-1/3"></div>
+                <div className="h-3 bg-slate-200 rounded w-1/2"></div>
+              </div>
+              <div className="flex justify-between items-center border-t pt-4">
+                <div className="h-6 bg-slate-200 rounded w-16"></div>
+                <div className="h-8 bg-slate-200 rounded w-24"></div>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {processedTutors.map(t => (
+            <div 
+              key={t._id || t.name} 
+              className="bg-white rounded-2xl shadow-sm hover:shadow-xl border border-slate-200 p-5 flex flex-col justify-between h-full relative overflow-hidden transition-all duration-300 hover:-translate-y-1 group"
+            >
+              <div>
+                <span className={`absolute top-3 right-3 px-2.5 py-1 text-[10px] font-black rounded-lg text-white z-10 ${t.teachingMode?.toLowerCase() === 'online' ? 'bg-cyan-600' : 'bg-blue-600'}`}>
+                  {t.teachingMode || 'Online'}
+                </span>
 
-              {/* 🖼️ Perfectly Framed Image with Zoom Button */}
-              <div className="w-full h-52 rounded-xl overflow-hidden bg-slate-100 border border-slate-200/60 mb-4 relative group/img">
-                <img 
-                  src={t.image} 
-                  alt={t.name} 
-                  className="w-full h-full object-cover object-top group-hover/img:scale-105 transition-all duration-500" 
-                  onError={(e)=>{e.target.src='https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=800'}} 
-                />
-                {/* Click Image to Zoom Lightbox */}
-                <button 
-                  onClick={() => setZoomImage({ src: t.image, name: t.name })}
-                  className="absolute bottom-2 right-2 p-2 bg-slate-900/70 hover:bg-blue-600 text-white rounded-lg opacity-0 group-hover/img:opacity-100 transition-all shadow-md cursor-pointer"
-                  title="Click to Zoom Full Photo"
-                >
-                  <ZoomIn className="w-4 h-4" />
+                <div className="w-full aspect-[4/3] rounded-xl overflow-hidden bg-slate-100 border border-slate-200/60 mb-4 relative group/img">
+                  <img 
+                    src={t.image} 
+                    alt={t.name} 
+                    className="w-full h-full object-cover object-top group-hover/img:scale-105 transition-all duration-500" 
+                    onError={(e)=>{e.target.src='https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=800'}} 
+                  />
+                  <button 
+                    onClick={() => setZoomImage({ src: t.image, name: t.name })}
+                    className="absolute bottom-2 right-2 p-2 bg-slate-900/70 hover:bg-blue-600 text-white rounded-lg opacity-0 group-hover/img:opacity-100 transition-all shadow-md cursor-pointer"
+                    title="Click to Zoom Full Photo"
+                  >
+                    <ZoomIn className="w-4 h-4" />
+                  </button>
+                </div>
+
+                <div className="space-y-2 cursor-pointer" onClick={() => setActiveTutorDetails(t)}>
+                  <div>
+                    <h3 className="text-lg font-black text-slate-900 group-hover:text-blue-600 transition-all">{t.name}</h3>
+                    <p className="text-xs font-black text-blue-600">{t.language || t.subject}</p>
+                  </div>
+                  <div className="flex items-center gap-1 text-amber-500 text-xs font-black">
+                    <Star className="w-3.5 h-3.5 fill-current" /> 4.9 <span className="text-slate-400 font-bold">({t.reviews || 112} reviews)</span>
+                  </div>
+                  <div className="space-y-1 text-xs font-bold text-slate-500 pt-1">
+                    <p className="flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5 text-slate-400" /> {t.location || 'Cambridge, MA'}</p>
+                    <p className="flex items-center gap-1.5"><Clock className="w-3.5 h-3.5 text-slate-400" /> {t.timeSlot || 'Mon - Fri, 4:00 PM'}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-between items-center border-t border-slate-100 pt-4 mt-6">
+                <span className="text-xl font-black text-slate-900">${t.price}<span className="text-xs text-slate-500 font-bold">/hr</span></span>
+                <button onClick={() => setActiveTutorDetails(t)} className="px-4 py-2 bg-blue-600 text-white font-black text-xs rounded-xl shadow group-hover:bg-blue-700 transition-all cursor-pointer">
+                  Book Session
                 </button>
               </div>
-
-              <div className="space-y-2 cursor-pointer" onClick={() => setActiveTutorDetails(t)}>
-                <div>
-                  <h3 className="text-lg font-black text-slate-900 group-hover:text-blue-600 transition-all">{t.name}</h3>
-                  <p className="text-xs font-black text-blue-600">{t.language || t.subject}</p>
-                </div>
-                <div className="flex items-center gap-1 text-amber-500 text-xs font-black">
-                  <Star className="w-3.5 h-3.5 fill-current" /> 4.9 <span className="text-slate-400 font-bold">({t.reviews || 112} reviews)</span>
-                </div>
-                <div className="space-y-1 text-xs font-bold text-slate-500 pt-1">
-                  <p className="flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5 text-slate-400" /> {t.location || 'Cambridge, MA'}</p>
-                  <p className="flex items-center gap-1.5"><Clock className="w-3.5 h-3.5 text-slate-400" /> {t.timeSlot || 'Mon - Fri, 4:00 PM'}</p>
-                </div>
-              </div>
             </div>
+          ))}
+        </div>
+      )}
 
-            <div className="flex justify-between items-center border-t border-slate-100 pt-4 mt-6">
-              <span className="text-xl font-black text-slate-900">${t.price}<span className="text-xs text-slate-500 font-bold">/hr</span></span>
-              <button onClick={() => setActiveTutorDetails(t)} className="px-4 py-2 bg-blue-600 text-white font-black text-xs rounded-xl shadow group-hover:bg-blue-700 transition-all cursor-pointer">
-                Book Session
-              </button>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* 🔍 FULL SIZE IMAGE LIGHTBOX MODAL */}
       {zoomImage && (
         <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setZoomImage(null)}>
           <div className="relative bg-white p-3 rounded-3xl max-w-xl w-full shadow-2xl space-y-3" onClick={(e) => e.stopPropagation()}>
