@@ -6,7 +6,6 @@ const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const app = express();
 const port = process.env.PORT || 5000;
 
-// Middleware
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ limit: '10mb', extended: true }));
@@ -21,270 +20,311 @@ const client = new MongoClient(uri, {
   }
 });
 
+let db;
 let tutorsCollection;
 let bookingsCollection;
 let usersCollection;
 
-async function run() {
-  try {
+async function connectDB() {
+  if (!db) {
     await client.connect();
-    const database = client.db("mediQueueDB");
-    tutorsCollection = database.collection("tutors");
-    bookingsCollection = database.collection("bookings");
-    usersCollection = database.collection("users");
-    console.log("📁 Database Connections initialized successfully!");
-  } catch (error) {
-    console.error("Database connection error:", error);
+    db = client.db("mediQueueDB");
+    tutorsCollection = db.collection("tutors");
+    bookingsCollection = db.collection("bookings");
+    usersCollection = db.collection("users");
+    console.log("📁 MongoDB Connected Successfully!");
   }
 }
-run().catch(console.dir);
 
-// Root Health Check Route
+app.use(async (req, res, next) => {
+  try {
+    await connectDB();
+    next();
+  } catch (err) {
+    console.error("DB Connection Error:", err);
+    res.status(500).send({ message: "Database connection failed" });
+  }
+});
+
+const safeQueryId = (id) => {
+  if (!id) return {};
+  if (ObjectId.isValid(id)) {
+    return { $or: [{ _id: new ObjectId(id) }, { _id: id }] };
+  }
+  return { _id: id };
+};
+
 app.get('/', (req, res) => {
   res.send('MediQueue Server is running smoothly!');
 });
 
-// ================= USER AUTH & PROFILE APIs ================= //
+// ================= USER AUTH APIs ================= //
+
 app.post('/users/signup', async (req, res) => {
   try {
-    const user = req.body;
-    const existingUser = await usersCollection.findOne({ email: user.email });
+    const { email, name, password, photoURL, image } = req.body;
+    if (!email) return res.status(400).send({ message: "Email is required" });
+
+    const normalizedEmail = email.trim().toLowerCase();
+    const existingUser = await usersCollection.findOne({ 
+      email: { $regex: `^${normalizedEmail}$`, $options: 'i' } 
+    });
+
     if (existingUser) {
-      return res.status(400).send({ message: "Email already exists" });
+      return res.status(400).send({ message: "User already exists with this email! Please login instead." });
     }
-    const result = await usersCollection.insertOne(user);
-    res.status(201).send(result);
+
+    const newUser = {
+      name: name || "User",
+      email: normalizedEmail,
+      password: password,
+      image: photoURL || image || "",
+      createdAt: new Date()
+    };
+
+    const result = await usersCollection.insertOne(newUser);
+    res.status(201).send({ success: true, result, user: newUser });
   } catch (error) {
-    res.status(500).send({ message: "Signup failed" });
+    res.status(500).send({ message: "Registration failed", error: error.message });
   }
 });
 
 app.post('/users/signin', async (req, res) => {
   try {
     const { email, password } = req.body;
-    const user = await usersCollection.findOne({ email, password });
-    if (!user) {
-      return res.status(401).send({ message: "Invalid credentials" });
+    if (!email || !password) return res.status(400).send({ message: "Email and Password are required" });
+
+    const normalizedEmail = email.trim().toLowerCase();
+    const user = await usersCollection.findOne({ 
+      email: { $regex: `^${normalizedEmail}$`, $options: 'i' } 
+    });
+    
+    if (!user || user.password !== password) {
+      return res.status(401).send({ message: "Invalid email or password" });
     }
-    res.send(user);
+    
+    res.send({ success: true, user });
   } catch (error) {
-    res.status(500).send({ message: "Signin failed" });
+    res.status(500).send({ message: "Signin failed", error: error.message });
   }
 });
 
-app.put('/users/profile', async (req, res) => {
-  try {
-    const { email, name, address, contact, image, gender, hourlyPay, courseType } = req.body;
-    const result = await usersCollection.updateOne(
-      { email },
-      { $set: { name, address, contact, image, gender, hourlyPay, courseType } }
-    );
-    res.send(result);
-  } catch (error) {
-    res.status(500).send({ message: "Profile update failed" });
-  }
-});
+// ================= TUTORS APIs ================= //
 
-// ================= TUTORS MANAGEMENT APIs ================= //
-
-// 1. Add New Tutor
 app.post('/tutors', async (req, res) => {
   try {
-    const tutorData = req.body;
+    const body = req.body;
     
-    // Convert types properly
-    if (tutorData.price) tutorData.price = parseFloat(tutorData.price);
-    if (tutorData.totalSlots) tutorData.totalSlots = parseInt(tutorData.totalSlots);
-    if (tutorData.sessionStartDate) tutorData.sessionStartDate = new Date(tutorData.sessionStartDate);
-    if (tutorData.sessionEndDate) tutorData.sessionEndDate = new Date(tutorData.sessionEndDate);
+    const tutorData = {
+      name: body.tutorName || body.name || "Anonymous Tutor",
+      tutorName: body.tutorName || body.name || "Anonymous Tutor",
+      image: body.photoURL || body.image || "/jhankar.png",
+      photoURL: body.photoURL || body.image || "/jhankar.png",
+      language: body.subject || body.language || "General",
+      subject: body.subject || body.language || "General",
+      availableDays: body.availableDaysTime || body.availableDays || "Sun - Thu",
+      timeSlot: body.availableDaysTime || body.timeSlot || "5:00 PM - 8:00 PM",
+      price: parseFloat(body.hourlyFee || body.price || 0),
+      hourlyFee: parseFloat(body.hourlyFee || body.price || 0),
+      totalSlots: Math.max(0, parseInt(body.totalSlot || body.totalSlots || 10)),
+      totalSlot: Math.max(0, parseInt(body.totalSlot || body.totalSlots || 10)),
+      sessionStartDate: body.sessionStartDate ? new Date(body.sessionStartDate) : new Date(),
+      sessionEndDate: body.sessionEndDate ? new Date(body.sessionEndDate) : new Date(Date.now() + 30*24*60*60*1000),
+      institution: body.institution || "N/A",
+      experience: body.experience || body.about || "N/A",
+      location: body.location || "N/A",
+      teachingMode: body.teachingMode || "Online",
+      email: body.email || "user@example.com",
+      createdAt: new Date()
+    };
 
     const result = await tutorsCollection.insertOne(tutorData);
-    res.status(201).send(result);
+    res.status(201).send({ success: true, insertedId: result.insertedId });
   } catch (error) {
-    res.status(500).send({ message: "Failed to add tutor" });
+    res.status(500).send({ message: "Failed to add tutor", error: error.message });
   }
 });
 
-// 2. Get Tutors (Search, Date Filter, Email Filter, Limit)
 app.get('/tutors', async (req, res) => {
   try {
-    const { email, search, startDate, endDate, limit } = req.query;
+    const { email, search, startDate, endDate } = req.query;
     let query = {};
 
-    if (email) {
-      query.email = email;
-    }
+    if (email) query.email = email;
 
-    // Case-insensitive name/subject search ($regex)
     if (search) {
       query.$or = [
         { name: { $regex: search, $options: 'i' } },
-        { language: { $regex: search, $options: 'i' } },
-        { subject: { $regex: search, $options: 'i' } }
+        { tutorName: { $regex: search, $options: 'i' } },
+        { subject: { $regex: search, $options: 'i' } },
+        { language: { $regex: search, $options: 'i' } }
       ];
     }
 
-    // Date range filtering ($gte and $lte)
     if (startDate || endDate) {
       query.sessionStartDate = {};
-      if (startDate) {
-        query.sessionStartDate.$gte = new Date(startDate);
-      }
-      if (endDate) {
-        query.sessionStartDate.$lte = new Date(endDate);
-      }
+      if (startDate) query.sessionStartDate.$gte = new Date(startDate);
+      if (endDate) query.sessionStartDate.$lte = new Date(endDate);
     }
 
-    let cursor = tutorsCollection.find(query);
-    if (limit) {
-      cursor = cursor.limit(parseInt(limit));
-    }
-
-    const result = await cursor.toArray();
+    const result = await tutorsCollection.find(query).toArray();
     res.send(result);
   } catch (error) {
     res.status(500).send({ message: "Failed to fetch tutors" });
   }
 });
 
-// 3. Get Single Tutor Details by ID
 app.get('/tutors/:id', async (req, res) => {
   try {
-    const id = req.params.id;
-    const result = await tutorsCollection.findOne({ _id: new ObjectId(id) });
-    if (!result) {
-      return res.status(404).send({ message: "Tutor not found" });
-    }
+    const query = safeQueryId(req.params.id);
+    const result = await tutorsCollection.findOne(query);
+    if (!result) return res.status(404).send({ message: "Tutor not found" });
     res.send(result);
   } catch (error) {
-    res.status(500).send({ message: "Failed to fetch tutor details" });
+    res.status(500).send({ message: "Fetch tutor failed" });
   }
 });
 
-// 4. Update Tutor Info
 app.put('/tutors/:id', async (req, res) => {
   try {
-    const id = req.params.id;
-    const updated = req.body;
+    const query = safeQueryId(req.params.id);
+    const body = req.body;
+
+    const updatedImage = body.image || body.photoURL;
 
     const updateDoc = {
       $set: {
-        name: updated.name,
-        email: updated.email,
-        language: updated.language,
-        subject: updated.subject || updated.language,
-        price: parseFloat(updated.price),
-        currency: updated.currency || 'USD',
-        feeType: updated.feeType || 'hourly',
-        description: updated.description || updated.about,
-        image: updated.image,
-        timeSlot: updated.timeSlot,
-        availableDays: updated.availableDays,
-        totalSlots: parseInt(updated.totalSlots),
-        sessionStartDate: updated.sessionStartDate ? new Date(updated.sessionStartDate) : null,
-        sessionEndDate: updated.sessionEndDate ? new Date(updated.sessionEndDate) : null,
-        institution: updated.institution,
-        experience: updated.experience,
-        location: updated.location,
-        teachingMode: updated.teachingMode
+        name: body.name || body.tutorName,
+        tutorName: body.tutorName || body.name,
+        image: updatedImage,
+        photoURL: updatedImage,
+        language: body.subject || body.language,
+        subject: body.subject || body.language,
+        price: parseFloat(body.price || body.hourlyFee || 0),
+        hourlyFee: parseFloat(body.hourlyFee || body.price || 0),
+        totalSlots: Math.max(0, parseInt(body.totalSlots || body.totalSlot || 0)),
+        totalSlot: Math.max(0, parseInt(body.totalSlot || body.totalSlots || 0)),
+        sessionStartDate: body.sessionStartDate ? new Date(body.sessionStartDate) : null,
+        sessionEndDate: body.sessionEndDate ? new Date(body.sessionEndDate) : null,
+        institution: body.institution,
+        experience: body.experience,
+        location: body.location,
+        teachingMode: body.teachingMode,
+        timeSlot: body.timeSlot || body.availableDaysTime
       }
     };
 
-    const result = await tutorsCollection.updateOne(
-      { _id: new ObjectId(id) },
-      updateDoc
-    );
-    res.send(result);
+    const result = await tutorsCollection.updateOne(query, updateDoc);
+    res.send({ success: true, result });
   } catch (error) {
-    res.status(500).send({ message: "Update failed" });
+    res.status(500).send({ message: "Failed to update tutor details" });
   }
 });
 
-// 5. Delete Tutor
 app.delete('/tutors/:id', async (req, res) => {
   try {
-    const result = await tutorsCollection.deleteOne({ _id: new ObjectId(req.params.id) });
-    res.send(result);
+    const query = safeQueryId(req.params.id);
+    const result = await tutorsCollection.deleteOne(query);
+    res.send({ success: true, result });
   } catch (error) {
-    res.status(500).send({ message: "Delete failed" });
+    res.status(500).send({ message: "Failed to delete tutor" });
   }
 });
 
 // ================= BOOKINGS APIs ================= //
 
-// 1. Create Booking (With Duplicate Check, Deadline & Slot Auto Decrement)
 app.post('/bookings', async (req, res) => {
   try {
-    const bookingData = req.body; 
+    const { tutorId, name, phone, tutorName, email, studentEmail, accountEmail } = req.body;
 
-    if (!bookingData.tutorId) {
-      return res.status(400).send({ message: "Tutor ID is required" });
+    if (!tutorId) {
+      return res.status(400).send({ message: "Tutor ID is missing" });
     }
 
-    // Fetch Tutor
-    const tutor = await tutorsCollection.findOne({ _id: new ObjectId(bookingData.tutorId) });
-    if (!tutor) {
-      return res.status(404).send({ message: "Tutor not found" });
-    }
+    const tutorQuery = safeQueryId(tutorId);
+    const tutor = await tutorsCollection.findOne(tutorQuery);
 
-    // Restriction 1: Zero Slot Check
-    const currentSlots = tutor.totalSlots ?? tutor.totalSlot ?? 0;
-    if (currentSlots <= 0) {
+    const currentSlots = tutor ? (tutor.totalSlots ?? tutor.totalSlot ?? 0) : 10;
+    if (tutor && currentSlots <= 0) {
       return res.status(400).send({ message: "No available slots left! This session is fully booked." });
     }
 
-    // Restriction 2: Deadline/Expired Check
-    const currentDate = new Date();
-    if (tutor.sessionEndDate && new Date(tutor.sessionEndDate) < currentDate) {
-      return res.status(400).send({ message: "Booking is not available yet or deadline has expired for this tutor." });
-    }
+    const formEmail = (email || studentEmail || "").trim().toLowerCase();
+    const activeAccountEmail = (accountEmail || formEmail).trim().toLowerCase();
 
-    // Restriction 3: Block duplicate active booking by same student for same tutor
-    const studentEmail = bookingData.studentEmail || bookingData.email;
+    // Check conflict against exact booking input email
     const existingActiveBooking = await bookingsCollection.findOne({
-      tutorId: bookingData.tutorId,
-      studentEmail: studentEmail,
-      status: { $ne: 'cancelled' } // Allow booking only if previous status is cancelled
+      $and: [
+        {
+          $or: [
+            { tutorId: String(tutorId) },
+            { tutorName: tutorName || tutor?.name || tutor?.tutorName }
+          ]
+        },
+        {
+          $or: [
+            { studentEmail: formEmail },
+            { email: formEmail }
+          ]
+        },
+        { status: { $ne: 'cancelled' } }
+      ]
     });
 
     if (existingActiveBooking) {
       return res.status(400).send({ 
-        message: "You have already booked this tutor! You cannot book again unless you cancel your existing session from My Sessions." 
+        message: "You have already booked a session with this tutor using this email address! Cancel your existing booking first if you want to re-book." 
       });
     }
 
-    // Insert Booking
-    const newBooking = {
-      ...bookingData,
-      studentEmail: studentEmail,
+    const bookingPayload = {
+      tutorId: String(tutorId),
+      name: name || "Student",
+      phone: phone || "N/A",
+      tutorName: tutorName || (tutor ? (tutor.name || tutor.tutorName) : "Tutor"),
+      email: formEmail,
+      studentEmail: formEmail,
+      accountEmail: activeAccountEmail, // Stores main account email for easy fetching
       status: "Confirmed",
       bookedAt: new Date()
     };
 
-    const bookingResult = await bookingsCollection.insertOne(newBooking);
+    const result = await bookingsCollection.insertOne(bookingPayload);
 
-    // Auto Decrease totalSlots by 1 ($inc: -1)
-    await tutorsCollection.updateOne(
-      { _id: new ObjectId(bookingData.tutorId) },
-      { $inc: { totalSlots: -1 } }
-    );
+    if (tutor) {
+      await tutorsCollection.updateOne(
+        tutorQuery,
+        { $set: { totalSlots: Math.max(0, currentSlots - 1), totalSlot: Math.max(0, currentSlots - 1) } }
+      );
+    }
 
-    res.status(201).send({ success: true, bookingResult });
+    res.status(201).send({ 
+      success: true, 
+      bookingId: result.insertedId, 
+      result 
+    });
   } catch (error) {
-    res.status(500).send({ message: "Booking failed", error: error.message });
+    console.error("Booking Error:", error);
+    res.status(500).send({ message: "Failed to complete booking", error: error.message });
   }
 });
 
-// 2. Get Bookings List
+// Fetch Bookings (Matches any of the student's emails or main account email)
 app.get('/bookings', async (req, res) => {
   try {
-    const { studentEmail, tutorEmail, email } = req.query;
-    let query = {};
+    const { email, studentEmail } = req.query;
+    const targetEmail = (studentEmail || email || "").trim().toLowerCase();
 
-    if (studentEmail) query.studentEmail = studentEmail;
-    else if (email) query.email = email;
-    
-    if (tutorEmail) query.tutorEmail = tutorEmail;
+    let query = {};
+    if (targetEmail && targetEmail !== 'undefined') {
+      query = {
+        $or: [
+          { studentEmail: targetEmail },
+          { email: targetEmail },
+          { accountEmail: targetEmail }
+        ]
+      };
+    }
 
     const result = await bookingsCollection.find(query).toArray();
     res.send(result);
@@ -293,85 +333,40 @@ app.get('/bookings', async (req, res) => {
   }
 });
 
-// 3. Cancel Booking Status Update (PATCH - Changes status to 'cancelled' & Increases Slot back by +1)
 app.patch('/bookings/:id', async (req, res) => {
   try {
-    const id = req.params.id;
-    const { status } = req.body;
-    const targetStatus = status || 'cancelled';
+    const query = safeQueryId(req.params.id);
+    const booking = await bookingsCollection.findOne(query);
+    
+    if (!booking) return res.status(404).send({ message: "Booking not found" });
 
-    const booking = await bookingsCollection.findOne({ _id: new ObjectId(id) });
-    if (!booking) {
-      return res.status(404).send({ message: "Booking not found" });
-    }
-
-    // If already cancelled, no action needed
     if (booking.status === 'cancelled') {
       return res.status(400).send({ message: "Booking is already cancelled" });
     }
 
     const result = await bookingsCollection.updateOne(
-      { _id: new ObjectId(id) },
-      { $set: { status: targetStatus } }
-    );
-
-    // Auto Increment tutor slots by 1 when booking is cancelled ($inc: +1)
-    if (targetStatus === 'cancelled' && booking.tutorId) {
-      await tutorsCollection.updateOne(
-        { _id: new ObjectId(booking.tutorId) },
-        { $inc: { totalSlots: 1 } }
-      );
-    }
-
-    res.send(result);
-  } catch (error) {
-    res.status(500).send({ message: "Status update failed", error: error.message });
-  }
-});
-
-// Fallback endpoint for /bookings/:id/cancel
-app.patch('/bookings/:id/cancel', async (req, res) => {
-  try {
-    const id = req.params.id;
-
-    const booking = await bookingsCollection.findOne({ _id: new ObjectId(id) });
-    if (!booking) {
-      return res.status(404).send({ message: "Booking not found" });
-    }
-
-    if (booking.status === 'cancelled') {
-      return res.status(400).send({ message: "Already cancelled" });
-    }
-
-    const result = await bookingsCollection.updateOne(
-      { _id: new ObjectId(id) },
+      query,
       { $set: { status: 'cancelled' } }
     );
 
     if (booking.tutorId) {
-      await tutorsCollection.updateOne(
-        { _id: new ObjectId(booking.tutorId) },
-        { $inc: { totalSlots: 1 } }
-      );
+      const tutorQuery = safeQueryId(booking.tutorId);
+      const tutor = await tutorsCollection.findOne(tutorQuery);
+      if (tutor) {
+        const slots = tutor.totalSlots ?? tutor.totalSlot ?? 0;
+        await tutorsCollection.updateOne(
+          tutorQuery,
+          { $set: { totalSlots: slots + 1, totalSlot: slots + 1 } }
+        );
+      }
     }
 
-    res.send(result);
+    res.send({ success: true, result });
   } catch (error) {
     res.status(500).send({ message: "Cancellation failed" });
   }
 });
 
-// Delete Booking (Optional)
-app.delete('/bookings/:id', async (req, res) => {
-  try {
-    const result = await bookingsCollection.deleteOne({ _id: new ObjectId(req.params.id) });
-    res.send(result);
-  } catch (error) {
-    res.status(500).send({ message: "Delete booking failed" });
-  }
-});
-
-// ================= FIGMA SEED API ================= //
 app.get('/seed-figma-tutors', async (req, res) => {
   try {
     const figmaTutors = [
@@ -448,7 +443,7 @@ app.get('/seed-figma-tutors', async (req, res) => {
         image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=500"
       },
       {
-        name: "Mr. Jhankar Mahbub",
+        name: "Jhankar Mahbub",
         language: "Web Development",
         subject: "Web Development",
         price: 40,
@@ -463,7 +458,7 @@ app.get('/seed-figma-tutors', async (req, res) => {
         sessionEndDate: new Date("2026-09-30"),
         reviews: 215,
         about: "Senior Web Developer teaching JavaScript, React, and Node.js in an engaging and fun way.",
-        image: "https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?q=80&w=500"
+        image: "/jhankar.png"
       },
       {
         name: "Dr. Priya Sharma",
@@ -488,10 +483,10 @@ app.get('/seed-figma-tutors', async (req, res) => {
     await tutorsCollection.deleteMany({});
     await tutorsCollection.insertMany(figmaTutors);
 
-    res.json({ success: true, message: "Successfully replaced database with official Figma Tutors data!" });
+    res.json({ success: true, message: "Successfully restored original tutors and photos!" });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
-app.listen(port, () => console.log(`🚀 Server is listening on port: ${port}`));
+app.listen(port, () => console.log(`🚀 Server listening on port: ${port}`));
