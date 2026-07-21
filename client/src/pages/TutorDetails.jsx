@@ -1,200 +1,301 @@
 import React, { useState } from 'react';
-import { ArrowLeft, Star, Award, GraduationCap, MapPin, Monitor, Calendar, Clock, Users, ZoomIn, X } from 'lucide-react';
-import Swal from 'sweetalert2';
+import { ArrowLeft, MapPin, Clock, Calendar, GraduationCap, Briefcase, Users, Copy, Check } from 'lucide-react';
 import axios from 'axios';
+import Swal from 'sweetalert2';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
-const TutorDetails = ({ tutor, user, onBack, setActiveTab, setRedirectTarget, setAuthMode }) => {
+const TutorDetails = ({ tutor, user, onBack, setActiveTab, setAuthMode }) => {
   const [showBookingModal, setShowBookingModal] = useState(false);
-  const [isZoomed, setIsZoomed] = useState(false);
+  const [confirmedBooking, setConfirmedBooking] = useState(null);
+  const [copied, setCopied] = useState(false);
 
-  const handleBookClick = () => {
-    if (!user) {
+  const currentSlots = tutor?.totalSlots ?? tutor?.totalSlot ?? 0;
+  const isSlotEmpty = currentSlots <= 0;
+  const isExpired = tutor?.sessionEndDate && new Date(tutor.sessionEndDate) < new Date();
+
+  const handleOpenBooking = () => {
+    const activeUser = user || JSON.parse(localStorage.getItem('mediqueue_session')) || JSON.parse(localStorage.getItem('user'));
+    if (!activeUser || !activeUser.email) {
       Swal.fire({
-        toast: true,
-        position: 'top-end',
-        icon: 'error',
-        title: 'Please log in to book a session',
-        showConfirmButton: false,
-        timer: 1500
+        icon: 'warning',
+        title: 'Login Required',
+        text: 'You must login first to book a session!',
+        confirmButtonText: 'Go to Login'
+      }).then(() => {
+        if (setAuthMode) setAuthMode('login');
+        if (setActiveTab) setActiveTab('auth');
       });
-
-      if (setRedirectTarget) {
-        setRedirectTarget({ type: 'tab', value: 'find' });
-      }
-
-      if (setAuthMode) {
-        setAuthMode('login');
-      }
-
-      setTimeout(() => {
-        if (setActiveTab) {
-          setActiveTab('auth');
-        }
-      }, 1200);
-
       return;
     }
-
     setShowBookingModal(true);
   };
 
-  const handleBookingConfirm = async (e) => {
+  const handleBookingSubmit = async (e) => {
     e.preventDefault();
-    const token = `MQ-${Date.now().toString().slice(-6)}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+    const form = e.target;
     
-    const bookingData = {
-      tutorName: tutor.name,
-      tutorEmail: tutor.email,
-      studentName: user.name,
-      studentEmail: user.email,
-      language: tutor.language || tutor.subject,
-      price: tutor.price,
-      sessionToken: token,
-      bookingDate: e.target.date.value,
-      timeSlot: tutor.timeSlot || '4:00 PM – 8:00 PM',
-      status: 'accepted'
+    // Active Logged-in User Account
+    const activeUser = user || JSON.parse(localStorage.getItem('mediqueue_session')) || JSON.parse(localStorage.getItem('user')) || {};
+
+    const inputEmail = form.email.value.trim().toLowerCase();
+    const loggedInAccountEmail = (activeUser.email || inputEmail).trim().toLowerCase();
+
+    const bookingPayload = {
+      tutorId: tutor._id,
+      name: form.name.value,
+      phone: form.phone.value,
+      tutorName: tutor.name || tutor.tutorName,
+      email: inputEmail,               // Custom input email
+      studentEmail: inputEmail,        // Custom input email
+      accountEmail: loggedInAccountEmail // MAIN LOGGED IN ACCOUNT EMAIL
     };
 
     try {
-      await axios.post(`${API_URL}/bookings`, bookingData);
-      setShowBookingModal(false);
+      const res = await axios.post(`${API_URL}/bookings`, bookingPayload);
+      if (res.data.success || res.status === 201) {
+        setShowBookingModal(false);
+        setConfirmedBooking({
+          token: res.data.bookingId || res.data.result?.insertedId || 'TOKEN-' + Math.random().toString(36).substr(2, 9),
+          tutorName: tutor.name || tutor.tutorName,
+          studentName: form.name.value
+        });
+      }
+    } catch (error) {
       Swal.fire({
-        title: 'Session Booked!',
-        html: `<p class="text-sm font-bold text-slate-600">Your session with <b>${tutor.name}</b> is confirmed.</p><p class="mt-2 text-xs text-slate-400">Session Token:</p><b class="text-blue-600 font-mono text-lg">${token}</b>`,
-        icon: 'success'
+        icon: 'error',
+        title: 'Booking Error',
+        text: error.response?.data?.message || 'Failed to complete booking'
       });
-    } catch (err) {
-      Swal.fire('Error', 'Failed to complete booking', 'error');
     }
   };
 
+  const handleCopyToken = () => {
+    if (confirmedBooking?.token) {
+      navigator.clipboard.writeText(confirmedBooking.token);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  const handleDoneBooking = () => {
+    setConfirmedBooking(null);
+    if (setActiveTab) setActiveTab('bookings');
+  };
+
   return (
-    <div className="min-h-screen bg-slate-50 py-10 px-4 md:px-12 max-w-6xl mx-auto space-y-6 font-sans">
-      <button onClick={onBack} className="flex items-center gap-2 text-xs font-black text-slate-600 hover:text-blue-600 cursor-pointer transition-all">
+    <div className="min-h-screen bg-slate-50 py-8 px-4 md:px-8 max-w-5xl mx-auto font-sans space-y-6">
+      
+      <button 
+        onClick={onBack} 
+        className="flex items-center gap-2 text-xs font-bold text-slate-600 hover:text-blue-600 transition cursor-pointer"
+      >
         <ArrowLeft className="w-4 h-4" /> Back to Tutors
       </button>
 
-      <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="h-44 bg-gradient-to-r from-blue-100 via-indigo-50 to-blue-50 relative"></div>
-
-        <div className="p-8 pt-0 space-y-8 relative">
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 -mt-20">
-            <div className="flex flex-col md:flex-row items-start md:items-end gap-5">
-              <div className="relative group/avatar cursor-pointer" onClick={() => setIsZoomed(true)}>
-                <img 
-                  src={tutor.image || 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=800'} 
-                  alt={tutor.name} 
-                  className="w-36 h-36 rounded-2xl border-4 border-white shadow-lg object-cover object-top bg-slate-100 group-hover/avatar:brightness-90 transition-all" 
-                  onError={(e)=>e.target.src='https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=800'} 
-                />
-                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover/avatar:opacity-100 transition-all text-white font-black text-xs gap-1 bg-black/40 rounded-2xl">
-                  <ZoomIn className="w-4 h-4" /> Zoom
-                </div>
-              </div>
-
-              <div className="space-y-1">
-                <h1 className="text-3xl font-black text-slate-900">{tutor.name}</h1>
-                <p className="text-sm font-black text-blue-600 font-mono">{tutor.language || tutor.subject || 'Mathematics'}</p>
-                <div className="flex items-center gap-1 text-amber-500 text-xs font-black pt-1">
-                  <Star className="w-4 h-4 fill-current" /> 4.9 <span className="text-slate-400 font-bold">(127 reviews)</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-4 w-full md:w-auto justify-between md:justify-end border-t md:border-0 pt-4 md:pt-0">
-              <span className="text-3xl font-black text-slate-900">${tutor.price || 45}<span className="text-sm font-bold text-slate-400">/hr</span></span>
-              <button onClick={handleBookClick} className="px-8 py-3.5 bg-blue-600 hover:bg-blue-700 text-white font-black text-sm rounded-xl shadow-md cursor-pointer transition-all hover:scale-105">
-                Book Session
-              </button>
+      <div className="bg-white rounded-3xl p-6 md:p-8 border border-slate-200 shadow-sm space-y-8">
+        
+        <div className="flex flex-col md:flex-row items-center md:items-start justify-between gap-6 border-b border-slate-100 pb-8">
+          <div className="flex flex-col md:flex-row items-center gap-6 text-center md:text-left">
+            <img 
+              src={tutor.image || tutor.photoURL} 
+              alt={tutor.name || tutor.tutorName} 
+              className="w-32 h-32 rounded-2xl object-cover border-2 border-slate-100 shadow-sm" 
+              onError={(e) => { e.target.src = 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=500'; }}
+            />
+            <div>
+              <h1 className="text-2xl font-black text-slate-900">{tutor.name || tutor.tutorName}</h1>
+              <p className="text-xs font-bold text-blue-600 mt-0.5">{tutor.subject || tutor.language}</p>
+              <span className="inline-block mt-3 px-3 py-1 bg-slate-100 text-slate-700 text-[11px] font-bold rounded-lg border border-slate-200">
+                Mode: {tutor.teachingMode || 'Online'}
+              </span>
             </div>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-4">
-            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200/80 space-y-1">
-              <GraduationCap className="w-4 h-4 text-blue-600" />
-              <p className="text-[10px] font-black text-slate-400 uppercase">Institution</p>
-              <p className="text-xs font-black text-slate-900">{tutor.institution || 'MIT / Harvard'}</p>
-            </div>
-            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200/80 space-y-1">
-              <Award className="w-4 h-4 text-blue-600" />
-              <p className="text-[10px] font-black text-slate-400 uppercase">Experience</p>
-              <p className="text-xs font-black text-slate-900">{tutor.experience || '8 years'}</p>
-            </div>
-            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200/80 space-y-1">
-              <MapPin className="w-4 h-4 text-blue-600" />
-              <p className="text-[10px] font-black text-slate-400 uppercase">Location</p>
-              <p className="text-xs font-black text-slate-900">{tutor.location || 'Cambridge, MA'}</p>
-            </div>
-            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200/80 space-y-1">
-              <Monitor className="w-4 h-4 text-blue-600" />
-              <p className="text-[10px] font-black text-slate-400 uppercase">Mode</p>
-              <p className="text-xs font-black text-slate-900">{tutor.teachingMode || 'Online'}</p>
-            </div>
+          <div className="text-center md:text-right space-y-3">
+            <p className="text-3xl font-black text-slate-900">${tutor.price || tutor.hourlyFee}<span className="text-xs font-bold text-slate-400">/hr</span></p>
+            <button 
+              onClick={handleOpenBooking} 
+              disabled={isSlotEmpty || isExpired}
+              className="px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 text-white font-bold text-xs rounded-xl shadow transition cursor-pointer disabled:cursor-not-allowed"
+            >
+              {isSlotEmpty ? "Fully Booked" : isExpired ? "Deadline Expired" : "Book Session"}
+            </button>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 space-y-1">
+            <p className="flex items-center gap-1.5 text-[11px] font-bold text-slate-400"><GraduationCap className="w-3.5 h-3.5" /> Institution</p>
+            <p className="text-xs font-black text-slate-800 truncate">{tutor.institution || 'N/A'}</p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200/80 space-y-1">
-              <Calendar className="w-4 h-4 text-blue-600" />
-              <p className="text-[10px] font-black text-slate-400 uppercase">Available Days</p>
-              <p className="text-xs font-black text-slate-900">{tutor.availableDays || 'Mon – Fri'}</p>
-            </div>
-            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200/80 space-y-1">
-              <Clock className="w-4 h-4 text-blue-600" />
-              <p className="text-[10px] font-black text-slate-400 uppercase">Time Slot</p>
-              <p className="text-xs font-black text-slate-900">{tutor.timeSlot || '4:00 PM – 8:00 PM'}</p>
-            </div>
-            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200/80 space-y-1">
-              <Users className="w-4 h-4 text-blue-600" />
-              <p className="text-[10px] font-black text-slate-400 uppercase">Total Slots</p>
-              <p className="text-xs font-black text-slate-900">{tutor.totalSlots || 8} available</p>
-            </div>
+          <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 space-y-1">
+            <p className="flex items-center gap-1.5 text-[11px] font-bold text-slate-400"><Briefcase className="w-3.5 h-3.5" /> Experience</p>
+            <p className="text-xs font-black text-slate-800 truncate">{tutor.experience || tutor.about || 'N/A'}</p>
           </div>
 
-          <div className="border-t pt-6 space-y-2">
-            <h3 className="text-lg font-black text-slate-900">About</h3>
-            <p className="text-xs font-medium text-slate-600 leading-relaxed max-w-4xl">
-              {tutor.about || "PhD in Applied Mathematics from MIT. Specialises in calculus, linear algebra, and advanced statistics. Known for breaking complex problems into approachable steps that click on the first try."}
-            </p>
+          <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 space-y-1">
+            <p className="flex items-center gap-1.5 text-[11px] font-bold text-slate-400"><MapPin className="w-3.5 h-3.5" /> Location</p>
+            <p className="text-xs font-black text-slate-800 truncate">{tutor.location || 'N/A'}</p>
           </div>
+
+          <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 space-y-1">
+            <p className="flex items-center gap-1.5 text-[11px] font-bold text-slate-400"><Users className="w-3.5 h-3.5" /> Total Slots</p>
+            <p className={`text-xs font-black ${isSlotEmpty ? 'text-red-500' : 'text-blue-600'}`}>{currentSlots} available</p>
+          </div>
+
+          <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 space-y-1">
+            <p className="flex items-center gap-1.5 text-[11px] font-bold text-slate-400"><Clock className="w-3.5 h-3.5" /> Time Slot</p>
+            <p className="text-xs font-black text-slate-800 truncate">{tutor.timeSlot || tutor.availableDaysTime || 'Sun - Thu 5:00 PM'}</p>
+          </div>
+
+          <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 space-y-1">
+            <p className="flex items-center gap-1.5 text-[11px] font-bold text-slate-400"><Calendar className="w-3.5 h-3.5" /> Session Start</p>
+            <p className="text-xs font-black text-slate-800">{tutor.sessionStartDate ? new Date(tutor.sessionStartDate).toLocaleDateString() : 'N/A'}</p>
+          </div>
+
+          <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 space-y-1 col-span-2">
+            <p className="flex items-center gap-1.5 text-[11px] font-bold text-slate-400"><Calendar className="w-3.5 h-3.5" /> Session End / Deadline</p>
+            <p className="text-xs font-black text-slate-800">{tutor.sessionEndDate ? new Date(tutor.sessionEndDate).toLocaleDateString() : 'N/A'}</p>
+          </div>
+        </div>
+
+        <div className="space-y-2 pt-2">
+          <h3 className="text-sm font-black text-slate-900">About & Teaching Experience</h3>
+          <p className="text-xs font-bold text-slate-600 leading-relaxed bg-slate-50 p-4 rounded-2xl border border-slate-100">
+            {tutor.experience || tutor.about || 'No description provided.'}
+          </p>
         </div>
       </div>
 
-      {isZoomed && (
-        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setIsZoomed(false)}>
-          <div className="relative bg-white p-3 rounded-3xl max-w-lg w-full shadow-2xl space-y-3" onClick={(e) => e.stopPropagation()}>
-            <div className="flex justify-between items-center px-2 pt-1">
-              <h3 className="text-sm font-black text-slate-900">{tutor.name}</h3>
-              <button onClick={() => setIsZoomed(false)} className="p-1.5 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 transition-all cursor-pointer">
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            <div className="w-full max-h-[75vh] overflow-hidden rounded-2xl bg-slate-100 flex items-center justify-center border">
-              <img src={tutor.image} alt="" className="w-full h-full object-contain max-h-[70vh]" />
-            </div>
-          </div>
-        </div>
-      )}
-
+      {/* Booking Form Modal */}
       {showBookingModal && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-3xl p-6 max-w-sm w-full space-y-4 border shadow-2xl">
-            <h3 className="text-xl font-black text-slate-900">Book Session</h3>
-            <p className="text-xs text-slate-500 font-bold">Tutor: <span className="text-blue-600">{tutor.name}</span></p>
-            <form onSubmit={handleBookingConfirm} className="space-y-3">
+        <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-6 w-full max-w-md shadow-2xl space-y-4 border border-slate-100 font-sans">
+            
+            <div className="flex justify-between items-center border-b pb-3">
               <div>
-                <label className="text-xs font-black text-slate-700">Select Date</label>
-                <input type="date" name="date" required className="w-full p-2.5 border border-slate-300 rounded-xl text-xs font-bold mt-1 focus:outline-none focus:border-blue-500" />
+                <h3 className="font-bold text-xl text-slate-900">Book Session</h3>
+                <p className="text-xs font-bold text-slate-500 mt-0.5">
+                  Tutor: <span className="text-blue-600 font-black">{tutor.name || tutor.tutorName}</span>
+                </p>
               </div>
-              <div className="flex gap-2 pt-2">
-                <button type="button" onClick={() => setShowBookingModal(false)} className="w-1/2 py-2.5 bg-slate-100 text-slate-700 rounded-xl text-xs font-black cursor-pointer">Cancel</button>
-                <button type="submit" className="w-1/2 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-black cursor-pointer shadow">Confirm</button>
+              <button onClick={() => setShowBookingModal(false)} className="text-slate-400 hover:text-slate-600 font-bold cursor-pointer">✕</button>
+            </div>
+
+            <form onSubmit={handleBookingSubmit} className="space-y-3 text-xs font-bold text-slate-700">
+              
+              <div>
+                <label className="block mb-1">Student Name</label>
+                <input 
+                  type="text" 
+                  name="name" 
+                  defaultValue={user?.name || user?.displayName || ''} 
+                  placeholder="Your Name"
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl" 
+                  required 
+                />
+              </div>
+
+              <div>
+                <label className="block mb-1">Phone Number</label>
+                <input 
+                  type="text" 
+                  name="phone" 
+                  placeholder="+8801811394590" 
+                  defaultValue="+8801811394590"
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl" 
+                  required 
+                />
+              </div>
+
+              <div>
+                <label className="block mb-1">Tutor Name</label>
+                <input 
+                  type="text" 
+                  name="tutorName" 
+                  defaultValue={tutor.name || tutor.tutorName} 
+                  className="w-full px-3.5 py-2.5 bg-slate-100 border border-slate-200 rounded-xl cursor-not-allowed" 
+                  readOnly
+                />
+              </div>
+
+              <div>
+                <label className="block mb-1">Student Email</label>
+                <input 
+                  type="email" 
+                  name="email" 
+                  defaultValue={user?.email || ''} 
+                  placeholder="your@email.com"
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl" 
+                  required 
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-3">
+                <button 
+                  type="button" 
+                  onClick={() => setShowBookingModal(false)} 
+                  className="px-4 py-2 border rounded-xl text-slate-600 font-bold cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit" 
+                  className="px-5 py-2.5 bg-blue-600 text-white font-black rounded-xl hover:bg-blue-700 transition cursor-pointer"
+                >
+                  Confirm Booking
+                </button>
               </div>
             </form>
           </div>
         </div>
       )}
+
+      {/* CONFIRMATION POPUP */}
+      {confirmedBooking && (
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-6 w-full max-w-md shadow-2xl text-center space-y-5 border border-slate-100 font-sans">
+            
+            <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto text-2xl font-black">
+              ✓
+            </div>
+
+            <div>
+              <h3 className="font-black text-2xl text-slate-900">Booking Confirmed!</h3>
+              <p className="text-xs text-slate-500 font-bold mt-1">
+                Your session with <span className="text-blue-600 font-black">{confirmedBooking.tutorName}</span> is successfully booked.
+              </p>
+            </div>
+
+            <div className="bg-slate-50 border border-slate-200 p-4 rounded-2xl space-y-2">
+              <span className="text-[10px] font-black tracking-wider text-slate-400 uppercase block">
+                Unique Booking Token ID
+              </span>
+              
+              <div className="flex items-center justify-between bg-white border border-slate-200 p-2.5 rounded-xl font-mono text-xs font-black text-slate-800">
+                <span className="truncate pr-2">{confirmedBooking.token}</span>
+                <button 
+                  onClick={handleCopyToken}
+                  className="flex items-center gap-1 px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-lg transition text-[11px] font-black cursor-pointer"
+                >
+                  {copied ? <Check className="w-3.5 h-3.5 text-green-600" /> : <Copy className="w-3.5 h-3.5" />}
+                  {copied ? 'Copied!' : 'Copy Token'}
+                </button>
+              </div>
+            </div>
+
+            <button 
+              onClick={handleDoneBooking}
+              className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-black text-xs rounded-xl shadow-lg transition cursor-pointer uppercase tracking-wider"
+            >
+              DONE
+            </button>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };

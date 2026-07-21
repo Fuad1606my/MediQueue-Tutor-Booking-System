@@ -51,3 +51,10 @@ MediQueue is a modern, full-stack ed-tech web application designed to seamlessly
    ```bash
    git clone [https://github.com/Fuad1606my/Your-Repository-Name.git](https://github.com/Fuad1606my/Your-Repository-Name.git)
    cd Your-Repository-Name
+
+   ## 📜 License
+This project is licensed under the MIT License — created by **FUAD ISLAM**. See the [LICENSE](./LICENSE) file for details.
+
+## 🔗 Live Links
+- **Client Live Site:** https://medi-queue-tutor-booking-system-two.vercel.app
+- **Backend API:** https://mediqueue-server-u85d.onrender.com

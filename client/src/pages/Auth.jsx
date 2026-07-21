@@ -11,6 +11,7 @@ const Auth = ({ setUser, setActiveTab, redirectTarget, setRedirectTarget, authMo
   const [passwordInput, setPasswordInput] = React.useState('');
   const [nameInput, setNameInput] = React.useState('');
   const [photoUrl, setPhotoUrl] = React.useState('');
+  const [loading, setLoading] = React.useState(false);
 
   const hasUpper = /[A-Z]/.test(passwordInput);
   const hasLower = /[a-z]/.test(passwordInput);
@@ -21,7 +22,7 @@ const Auth = ({ setUser, setActiveTab, redirectTarget, setRedirectTarget, authMo
       title: 'Google Authentication',
       text: 'Simulating Google OAuth verification...',
       icon: 'info',
-      timer: 1500,
+      timer: 1200,
       showConfirmButton: false
     }).then(() => {
       const mockGoogleUser = {
@@ -29,8 +30,12 @@ const Auth = ({ setUser, setActiveTab, redirectTarget, setRedirectTarget, authMo
         email: "user.google@mediqueue.edu",
         image: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=200"
       };
+      
+      localStorage.setItem('mediqueue_session', JSON.stringify(mockGoogleUser));
       setUser(mockGoogleUser);
-      Swal.fire('Welcome!', 'Authenticated via Google.', 'success');
+
+      Swal.fire('Welcome!', 'Logged in via Google successfully.', 'success');
+      
       if (redirectTarget) {
         setActiveTab(redirectTarget.value);
         if (setRedirectTarget) setRedirectTarget(null);
@@ -42,6 +47,7 @@ const Auth = ({ setUser, setActiveTab, redirectTarget, setRedirectTarget, authMo
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setLoading(true);
 
     if (isSignUp) {
       if (!hasUpper || !hasLower || !hasMinLen) {
@@ -51,12 +57,13 @@ const Auth = ({ setUser, setActiveTab, redirectTarget, setRedirectTarget, authMo
           icon: 'error',
           confirmButtonColor: '#EF4444'
         });
+        setLoading(false);
         return;
       }
 
       const userData = { 
-        name: nameInput, 
-        email: emailInput, 
+        name: nameInput.trim(), 
+        email: emailInput.trim().toLowerCase(), 
         password: passwordInput, 
         role: 'student', 
         image: photoUrl || '/male-avatar.jpg' 
@@ -64,29 +71,64 @@ const Auth = ({ setUser, setActiveTab, redirectTarget, setRedirectTarget, authMo
 
       try {
         const res = await axios.post(`${API_URL}/users/signup`, userData);
-        if (res.status === 201) {
-          Swal.fire('Success', 'Account created! Please sign in.', 'success');
-          setAuthMode('login');
+        if (res.status === 201 || res.data?.success) {
+          Swal.fire({
+            icon: 'success',
+            title: 'Account Created!',
+            text: 'Registration successful. Please sign in now.',
+            confirmButtonText: 'Sign In Now'
+          }).then(() => {
+            if (setAuthMode) setAuthMode('login');
+          });
         }
       } catch (err) {
-        Swal.fire('Error', err.response?.data?.message || 'Registration failed', 'error');
+        Swal.fire('Registration Error', err.response?.data?.message || 'Registration failed. Try again.', 'error');
+      } finally {
+        setLoading(false);
       }
     } else {
+      // LOGIN / SIGN IN LOGIC
       try {
-        const res = await axios.post(`${API_URL}/users/signin`, { email: emailInput, password: passwordInput });
-        if (res.data.email) {
-          setUser(res.data);
-          Swal.fire('Welcome Back!', 'Logged in successfully.', 'success');
+        const res = await axios.post(`${API_URL}/users/signin`, { 
+          email: emailInput.trim().toLowerCase(), 
+          password: passwordInput 
+        });
+
+        // FIXED: Safely extracting user object from backend response
+        const loggedInUser = res.data?.user || res.data;
+
+        if (loggedInUser && (loggedInUser.email || res.data?.success)) {
+          // Store session in LocalStorage
+          localStorage.setItem('mediqueue_session', JSON.stringify(loggedInUser));
           
-          if (redirectTarget) {
-            setActiveTab(redirectTarget.value);
-            if (setRedirectTarget) setRedirectTarget(null);
-          } else {
-            setActiveTab('home');
-          }
+          // Update React State
+          setUser(loggedInUser);
+
+          Swal.fire({
+            icon: 'success',
+            title: 'Welcome Back!',
+            text: `Logged in successfully as ${loggedInUser.name || 'User'}!`,
+            timer: 1500,
+            showConfirmButton: false
+          });
+
+          // Redirect
+          setTimeout(() => {
+            if (redirectTarget) {
+              setActiveTab(redirectTarget.value);
+              if (setRedirectTarget) setRedirectTarget(null);
+            } else {
+              setActiveTab('home');
+            }
+          }, 300);
+        } else {
+          Swal.fire('Error', res.data?.message || 'Invalid email or password credentials.', 'error');
         }
       } catch (err) {
-        Swal.fire('Error', 'Invalid email or password credentials.', 'error');
+        console.error("Login Fail:", err);
+        Swal.fire('Login Error', err.response?.data?.message || 'Invalid email or password credentials.', 'error');
+      } finally {
+        setLoading(false);
       }
     }
   };
@@ -94,6 +136,7 @@ const Auth = ({ setUser, setActiveTab, redirectTarget, setRedirectTarget, authMo
   return (
     <div className="min-h-[80vh] flex items-center justify-center p-6 font-sans bg-slate-50">
       <div className="bg-white p-8 rounded-3xl shadow-xl border border-slate-200/80 max-w-md w-full space-y-6">
+        
         <div className="text-center space-y-1">
           <h2 className="text-3xl font-black text-slate-900 tracking-tight">
             {isSignUp ? 'Create your account' : 'Welcome back'}
@@ -121,28 +164,63 @@ const Auth = ({ setUser, setActiveTab, redirectTarget, setRedirectTarget, authMo
           {isSignUp && (
             <div>
               <label className="block text-xs font-black text-slate-800 mb-1">Full Name</label>
-              <input type="text" value={nameInput} onChange={(e)=>setNameInput(e.target.value)} required placeholder="Your full name" className="w-full px-4 py-2 bg-slate-50 border border-slate-300 rounded-xl font-bold text-sm focus:outline-none focus:border-blue-500" />
+              <input 
+                type="text" 
+                value={nameInput} 
+                onChange={(e)=>setNameInput(e.target.value)} 
+                required 
+                placeholder="Your full name" 
+                className="w-full px-4 py-2 bg-slate-50 border border-slate-300 rounded-xl font-bold text-sm focus:outline-none focus:border-blue-500" 
+              />
             </div>
           )}
           
           <div>
             <label className="block text-xs font-black text-slate-800 mb-1">Email</label>
-            <input type="email" value={emailInput} onChange={(e)=>setEmailInput(e.target.value)} required placeholder="you@email.com" className="w-full px-4 py-2 bg-slate-50 border border-slate-300 rounded-xl font-bold text-sm focus:outline-none focus:border-blue-500" />
+            <input 
+              type="email" 
+              value={emailInput} 
+              onChange={(e)=>setEmailInput(e.target.value)} 
+              required 
+              placeholder="you@email.com" 
+              className="w-full px-4 py-2 bg-slate-50 border border-slate-300 rounded-xl font-bold text-sm focus:outline-none focus:border-blue-500" 
+            />
           </div>
 
           {isSignUp && (
             <div>
               <label className="block text-xs font-black text-slate-800 mb-1">Photo URL <span className="text-slate-400">(optional)</span></label>
-              <input type="url" value={photoUrl} onChange={(e)=>setPhotoUrl(e.target.value)} placeholder="https://..." className="w-full px-4 py-2 bg-slate-50 border border-slate-300 rounded-xl font-bold text-sm focus:outline-none focus:border-blue-500" />
+              <input 
+                type="url" 
+                value={photoUrl} 
+                onChange={(e)=>setPhotoUrl(e.target.value)} 
+                placeholder="https://..." 
+                className="w-full px-4 py-2 bg-slate-50 border border-slate-300 rounded-xl font-bold text-sm focus:outline-none focus:border-blue-500" 
+              />
             </div>
           )}
 
           <div>
             <div className="flex justify-between items-center mb-1">
               <label className="text-xs font-black text-slate-800">Password</label>
-              {!isSignUp && <button type="button" className="text-[11px] font-black text-blue-600 hover:underline">Forgot password?</button>}
+              {!isSignUp && (
+                <button 
+                  type="button" 
+                  onClick={() => Swal.fire('Notice', 'Please register or contact admin.', 'info')} 
+                  className="text-[11px] font-black text-blue-600 hover:underline cursor-pointer"
+                >
+                  Forgot password?
+                </button>
+              )}
             </div>
-            <input type="password" value={passwordInput} onChange={(e)=>setPasswordInput(e.target.value)} required placeholder="••••••••" className="w-full px-4 py-2 bg-slate-50 border border-slate-300 rounded-xl font-bold text-sm focus:outline-none focus:border-blue-500" />
+            <input 
+              type="password" 
+              value={passwordInput} 
+              onChange={(e)=>setPasswordInput(e.target.value)} 
+              required 
+              placeholder="••••••••" 
+              className="w-full px-4 py-2 bg-slate-50 border border-slate-300 rounded-xl font-bold text-sm focus:outline-none focus:border-blue-500" 
+            />
           </div>
 
           {isSignUp && (
@@ -153,8 +231,19 @@ const Auth = ({ setUser, setActiveTab, redirectTarget, setRedirectTarget, authMo
             </div>
           )}
 
-          <button type="submit" className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-black text-sm uppercase rounded-xl tracking-wider shadow cursor-pointer transition-all">
-            {isSignUp ? 'Create Account' : 'Sign In'}
+          <button 
+            type="submit" 
+            disabled={loading}
+            className="w-full py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white font-black text-sm uppercase rounded-xl tracking-wider shadow cursor-pointer transition-all flex items-center justify-center gap-2"
+          >
+            {loading ? (
+              <>
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                {isSignUp ? 'CREATING...' : 'SIGNING IN...'}
+              </>
+            ) : (
+              isSignUp ? 'Create Account' : 'Sign In'
+            )}
           </button>
         </form>
 
@@ -168,6 +257,7 @@ const Auth = ({ setUser, setActiveTab, redirectTarget, setRedirectTarget, authMo
             {isSignUp ? 'Sign in' : 'Register'}
           </button>
         </p>
+
       </div>
     </div>
   );

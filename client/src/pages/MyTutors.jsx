@@ -1,149 +1,278 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import Swal from 'sweetalert2';
-import { Edit2, Trash2, X } from 'lucide-react';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
-const MyTutors = ({ user }) => {
+const MyTutors = () => {
   const [myTutors, setMyTutors] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editingTutor, setEditingTutor] = useState(null);
+  const [photoInput, setPhotoInput] = useState('');
+  const user = JSON.parse(localStorage.getItem('user')) || {};
 
-  const fetchMyTutors = () => {
-    if (!user?.email) return;
+  const fetchMyTutors = async () => {
     setLoading(true);
-    axios.get(`${API_URL}/tutors?email=${user.email}`)
-      .then(res => {
-        setMyTutors(res.data || []);
-        setLoading(false);
-      })
-      .catch(err => {
-        console.error(err);
-        setLoading(false);
-      });
+    try {
+      const res = await axios.get(`${API_URL}/tutors?email=${user.email || ''}`);
+      setMyTutors(res.data || []);
+    } catch (error) {
+      console.error("Failed to fetch my tutors:", error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
     fetchMyTutors();
-  }, [user]);
+  }, []);
+
+  const handleEditClick = (tutor) => {
+    setEditingTutor(tutor);
+    setPhotoInput(tutor.image || tutor.photoURL || '');
+  };
+
+  // Convert File to Base64
+  const handleFileUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPhotoInput(reader.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   const handleDelete = (id) => {
     Swal.fire({
-      title: 'Delete Tutor Listing?',
-      text: "This action cannot be undone.",
+      title: 'Are you sure?',
+      text: "You won't be able to revert this!",
       icon: 'warning',
       showCancelButton: true,
-      confirmButtonColor: '#EF4444',
-      cancelButtonColor: '#6B7280',
-      confirmButtonText: 'Yes, Delete'
-    }).then((result) => {
+      confirmButtonText: 'Yes, delete it!'
+    }).then(async (result) => {
       if (result.isConfirmed) {
-        axios.delete(`${API_URL}/tutors/${id}`)
-          .then(() => {
-            Swal.fire('Deleted!', 'Tutor profile removed.', 'success');
+        try {
+          const res = await axios.delete(`${API_URL}/tutors/${id}`);
+          if (res.data.success || res.status === 200) {
+            Swal.fire('Deleted!', 'Tutor entry has been deleted.', 'success');
             fetchMyTutors();
-          })
-          .catch(() => {
-            Swal.fire('Error', 'Failed to delete tutor.', 'error');
-          });
+          }
+        } catch (error) {
+          Swal.fire('Error', error.response?.data?.message || 'Failed to delete tutor', 'error');
+        }
       }
     });
   };
 
   const handleUpdateSubmit = async (e) => {
     e.preventDefault();
+    const form = e.target;
+
+    const updatedData = {
+      name: form.tutorName.value,
+      tutorName: form.tutorName.value,
+      image: photoInput,
+      photoURL: photoInput,
+      language: form.subject.value,
+      subject: form.subject.value,
+      timeSlot: form.availableDaysTime.value,
+      availableDaysTime: form.availableDaysTime.value,
+      price: parseFloat(form.hourlyFee.value),
+      hourlyFee: parseFloat(form.hourlyFee.value),
+      totalSlots: parseInt(form.totalSlot.value),
+      totalSlot: parseInt(form.totalSlot.value),
+      sessionStartDate: form.sessionStartDate.value,
+      sessionEndDate: form.sessionEndDate.value,
+      institution: form.institution.value,
+      experience: form.experience.value,
+      location: form.location.value,
+      teachingMode: form.teachingMode.value,
+      email: user.email
+    };
+
     try {
-      await axios.put(`${API_URL}/tutors/${editingTutor._id}`, editingTutor);
-      Swal.fire('Updated!', 'Tutor profile updated successfully.', 'success');
-      setEditingTutor(null);
-      fetchMyTutors();
-    } catch (err) {
-      Swal.fire('Error', 'Failed to update tutor details.', 'error');
+      const res = await axios.put(`${API_URL}/tutors/${editingTutor._id}`, updatedData);
+      if (res.data.success || res.status === 200) {
+        Swal.fire('Success!', 'Tutor details updated successfully!', 'success');
+        setEditingTutor(null);
+        fetchMyTutors();
+      }
+    } catch (error) {
+      Swal.fire('Error', error.response?.data?.message || 'Failed to update tutor details', 'error');
     }
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-[60vh] flex items-center justify-center font-sans">
-        <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen bg-slate-50 py-10 px-4 md:px-8 max-w-7xl mx-auto space-y-8 font-sans">
-      <div>
-        <h1 className="text-3xl font-black text-slate-900">My Tutor Listings</h1>
-        <p className="text-xs text-slate-500 font-bold mt-1">Manage, update or remove your created tutor profiles.</p>
+    <div className="min-h-screen bg-slate-50 py-10 px-4 md:px-8 max-w-7xl mx-auto space-y-6 font-sans">
+      <h1 className="text-3xl font-black text-center text-slate-900">My Posted Tutors</h1>
+
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="border-b border-slate-200 bg-slate-50 text-[13px] font-black text-slate-800">
+                <th className="py-4 px-4">Tutor ID</th>
+                <th className="py-4 px-4">Tutor Name</th>
+                <th className="py-4 px-4">Subject</th>
+                <th className="py-4 px-4">Hourly Fee</th>
+                <th className="py-4 px-4">Total Slots</th>
+                <th className="py-4 px-4 text-center">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 text-xs font-bold text-slate-700">
+              {loading ? (
+                <tr>
+                  <td colSpan="6" className="text-center py-12">
+                    <div className="inline-flex items-center gap-3 text-blue-600 font-bold">
+                      <div className="w-6 h-6 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                      Loading your posted tutors...
+                    </div>
+                  </td>
+                </tr>
+              ) : myTutors.length === 0 ? (
+                <tr>
+                  <td colSpan="6" className="text-center py-12 text-slate-400 font-medium">
+                    No tutors posted yet.
+                  </td>
+                </tr>
+              ) : (
+                myTutors.map((tutor) => (
+                  <tr key={tutor._id} className="hover:bg-slate-50/80 transition-colors">
+                    <td className="py-3.5 px-4 font-mono text-[11px] text-slate-500">{tutor._id}</td>
+                    <td className="py-3.5 px-4 font-black text-slate-900">{tutor.name || tutor.tutorName}</td>
+                    <td className="py-3.5 px-4">{tutor.language || tutor.subject}</td>
+                    <td className="py-3.5 px-4">${tutor.price || tutor.hourlyFee}/hr</td>
+                    <td className="py-3.5 px-4">{tutor.totalSlots ?? tutor.totalSlot ?? 0}</td>
+                    <td className="py-3.5 px-4 text-center space-x-2">
+                      <button 
+                        onClick={() => handleEditClick(tutor)} 
+                        className="px-3 py-1.5 bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white rounded-lg text-[11px] font-black transition cursor-pointer"
+                      >
+                        Update
+                      </button>
+                      <button 
+                        onClick={() => handleDelete(tutor._id)} 
+                        className="px-3 py-1.5 bg-red-50 text-red-600 hover:bg-red-600 hover:text-white rounded-lg text-[11px] font-black transition cursor-pointer"
+                      >
+                        Delete
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
-      {myTutors.length === 0 ? (
-        <div className="bg-white p-12 rounded-3xl border border-slate-200 text-center space-y-4 shadow-sm">
-          <h3 className="text-xl font-black text-slate-800">No Tutor Profiles Created</h3>
-          <p className="text-xs text-slate-500 font-medium">Use the "Add Tutor" tab to create your first tutor listing.</p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {myTutors.map(t => (
-            <div key={t._id} className="bg-white rounded-2xl border border-slate-200 p-5 space-y-4 shadow-sm relative flex flex-col justify-between hover:shadow-md transition-all">
-              <div>
-                <img src={t.image} alt="" className="w-full h-44 rounded-xl object-cover bg-slate-100 mb-3" />
-                <h3 className="text-lg font-black text-slate-900">{t.name}</h3>
-                <p className="text-xs font-black text-blue-600">{t.subject || t.language}</p>
-                <p className="text-xs text-slate-500 mt-2 font-bold">${t.price}/hr • {t.teachingMode}</p>
-              </div>
-
-              <div className="flex justify-end gap-2 border-t pt-3">
-                <button onClick={() => setEditingTutor(t)} className="p-2 text-blue-600 hover:bg-blue-50 rounded-xl transition-all cursor-pointer" title="Edit Profile">
-                  <Edit2 className="w-4 h-4" />
-                </button>
-                <button onClick={() => handleDelete(t._id)} className="p-2 text-red-600 hover:bg-red-50 rounded-xl transition-all cursor-pointer" title="Delete Profile">
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* ✏️ Update Tutor Modal */}
+      {/* Edit Modal */}
       {editingTutor && (
-        <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white p-6 rounded-3xl max-w-lg w-full shadow-2xl space-y-4 border">
+        <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-xl shadow-2xl space-y-4 max-h-[85vh] overflow-y-auto border border-slate-200">
             <div className="flex justify-between items-center border-b pb-3">
-              <h3 className="text-lg font-black text-slate-900">Update Tutor Profile</h3>
-              <button onClick={() => setEditingTutor(null)} className="p-1 rounded-full bg-slate-100 hover:bg-slate-200">
-                <X className="w-4 h-4" />
-              </button>
+              <h3 className="font-black text-lg text-slate-900">Update Tutor Details</h3>
+              <button onClick={() => setEditingTutor(null)} className="text-slate-400 hover:text-slate-600 font-black cursor-pointer">✕</button>
             </div>
 
-            <form onSubmit={handleUpdateSubmit} className="space-y-3 text-xs font-bold">
+            <form onSubmit={handleUpdateSubmit} className="space-y-3 text-xs font-bold text-slate-700">
               <div>
-                <label className="block text-slate-700 mb-1">Subject</label>
-                <input type="text" value={editingTutor.subject || ''} onChange={(e) => setEditingTutor({ ...editingTutor, subject: e.target.value })} className="w-full p-2.5 bg-slate-50 border rounded-xl" required />
+                <label className="block mb-1">Tutor Name</label>
+                <input type="text" name="tutorName" defaultValue={editingTutor.name || editingTutor.tutorName} className="w-full px-3 py-2 border rounded-xl" required />
               </div>
+
+              {/* Photo Input: URL & File Upload */}
+              <div className="space-y-2 border p-3 rounded-xl bg-slate-50">
+                <label className="block text-slate-900 font-black">Tutor Image (URL or Upload File)</label>
+                <input 
+                  type="text" 
+                  name="photoURL" 
+                  value={photoInput} 
+                  onChange={(e) => setPhotoInput(e.target.value)} 
+                  placeholder="https://... image url" 
+                  className="w-full px-3 py-2 bg-white border rounded-xl" 
+                />
+                
+                <div className="flex items-center gap-2 pt-1">
+                  <span className="text-[10px] text-slate-400 font-bold uppercase">OR Upload Device File:</span>
+                  <input 
+                    type="file" 
+                    accept="image/*" 
+                    onChange={handleFileUpload} 
+                    className="text-xs cursor-pointer" 
+                  />
+                </div>
+
+                {photoInput && (
+                  <div className="pt-2 flex items-center gap-3">
+                    <span className="text-[10px] text-slate-400 font-bold">Image Preview:</span>
+                    <img src={photoInput} alt="Preview" className="w-12 h-12 rounded-xl object-cover border" />
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <label className="block mb-1">Subject / Category</label>
+                <input type="text" name="subject" defaultValue={editingTutor.language || editingTutor.subject} className="w-full px-3 py-2 border rounded-xl" required />
+              </div>
+
+              <div>
+                <label className="block mb-1">Available Days and Time</label>
+                <input type="text" name="availableDaysTime" defaultValue={editingTutor.timeSlot || editingTutor.availableDays} className="w-full px-3 py-2 border rounded-xl" required />
+              </div>
+
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-slate-700 mb-1">Price / hr ($)</label>
-                  <input type="number" value={editingTutor.price || ''} onChange={(e) => setEditingTutor({ ...editingTutor, price: Number(e.target.value) })} className="w-full p-2.5 bg-slate-50 border rounded-xl" required />
+                  <label className="block mb-1">Hourly Fee ($)</label>
+                  <input type="number" name="hourlyFee" defaultValue={editingTutor.price || editingTutor.hourlyFee} className="w-full px-3 py-2 border rounded-xl" required />
                 </div>
                 <div>
-                  <label className="block text-slate-700 mb-1">Teaching Mode</label>
-                  <select value={editingTutor.teachingMode || 'Online'} onChange={(e) => setEditingTutor({ ...editingTutor, teachingMode: e.target.value })} className="w-full p-2.5 bg-slate-50 border rounded-xl">
+                  <label className="block mb-1">Total Slot</label>
+                  <input type="number" name="totalSlot" defaultValue={editingTutor.totalSlots ?? editingTutor.totalSlot ?? 10} className="w-full px-3 py-2 border rounded-xl" required />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block mb-1">Session Start Date</label>
+                  <input type="date" name="sessionStartDate" defaultValue={editingTutor.sessionStartDate ? new Date(editingTutor.sessionStartDate).toISOString().split('T')[0] : ''} className="w-full px-3 py-2 border rounded-xl" required />
+                </div>
+                <div>
+                  <label className="block mb-1">Session End Date / Deadline</label>
+                  <input type="date" name="sessionEndDate" defaultValue={editingTutor.sessionEndDate ? new Date(editingTutor.sessionEndDate).toISOString().split('T')[0] : ''} className="w-full px-3 py-2 border rounded-xl" required />
+                </div>
+              </div>
+
+              <div>
+                <label className="block mb-1">Institution</label>
+                <input type="text" name="institution" defaultValue={editingTutor.institution} className="w-full px-3 py-2 border rounded-xl" required />
+              </div>
+
+              <div>
+                <label className="block mb-1">Experience</label>
+                <textarea name="experience" defaultValue={editingTutor.experience || editingTutor.about} className="w-full px-3 py-2 border rounded-xl" required></textarea>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block mb-1">Location</label>
+                  <input type="text" name="location" defaultValue={editingTutor.location} className="w-full px-3 py-2 border rounded-xl" required />
+                </div>
+                <div>
+                  <label className="block mb-1">Teaching Mode</label>
+                  <select name="teachingMode" defaultValue={editingTutor.teachingMode || 'Online'} className="w-full px-3 py-2 border rounded-xl" required>
                     <option value="Online">Online</option>
                     <option value="Offline">Offline</option>
                     <option value="Both">Both</option>
                   </select>
                 </div>
               </div>
-              <div>
-                <label className="block text-slate-700 mb-1">Location</label>
-                <input type="text" value={editingTutor.location || ''} onChange={(e) => setEditingTutor({ ...editingTutor, location: e.target.value })} className="w-full p-2.5 bg-slate-50 border rounded-xl" />
+
+              <div className="flex justify-end gap-2 pt-3">
+                <button type="button" onClick={() => setEditingTutor(null)} className="px-4 py-2 border rounded-xl cursor-pointer">Cancel</button>
+                <button type="submit" className="px-4 py-2 bg-blue-600 text-white font-black rounded-xl cursor-pointer">Save Changes</button>
               </div>
-              <button type="submit" className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-black rounded-xl uppercase tracking-wider transition-all mt-2">
-                Save Changes
-              </button>
             </form>
           </div>
         </div>

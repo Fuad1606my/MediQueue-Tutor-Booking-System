@@ -11,17 +11,17 @@ const slides = [
   {
     title: "Unlock Your Academic Potential",
     desc: "Connect with verified tutors across 50+ subjects and schedule sessions that fit your life.",
-    bgImage: "/hero1.jpg"
+    bgImage: "https://images.unsplash.com/photo-1523240795612-9a054b0db644?q=80&w=1200"
   },
   {
     title: "From Struggling to Succeeding",
     desc: "Students who use MediQueue see a 40% grade improvement on average within just four weeks.",
-    bgImage: "/hero2.jpg"
+    bgImage: "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?q=80&w=1200"
   },
   {
     title: "Expert Guidance, Built For You",
     desc: "Eliminate manual scheduling and prevent time slot conflicts with our optimized framework.",
-    bgImage: "/hero3.jpg"
+    bgImage: "https://images.unsplash.com/photo-1524178232363-1fb2b075b655?q=80&w=1200"
   }
 ];
 
@@ -94,6 +94,7 @@ const Home = ({ user, setActiveTab, setRedirectTarget, setAuthMode }) => {
   return (
     <div className="font-sans bg-slate-50 space-y-20 pb-0">
       
+      {/* 🚀 Animated Slider Hero Section */}
       <div className="relative h-[480px] md:h-[520px] overflow-hidden w-full shadow-lg group bg-slate-900">
         <AnimatePresence mode="wait">
           <motion.div 
@@ -141,6 +142,7 @@ const Home = ({ user, setActiveTab, setRedirectTarget, setAuthMode }) => {
         </div>
       </div>
 
+      {/* 🌟 Available Tutors Section */}
       <div className="max-w-7xl mx-auto px-4 md:px-8 space-y-6">
         <div className="flex justify-between items-end border-b border-slate-200 pb-3">
           <div>
@@ -164,11 +166,11 @@ const Home = ({ user, setActiveTab, setRedirectTarget, setAuthMode }) => {
               </span>
               
               <div className="w-full h-44 rounded-xl overflow-hidden bg-slate-100 border">
-                <img src={t.image} alt={t.name} className="w-full h-full object-cover object-center group-hover:scale-105 transition-all duration-300" onError={(e)=>{e.target.src='https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=500'}} />
+                <img src={t.image || t.photoURL} alt={t.name} className="w-full h-full object-cover object-center group-hover:scale-105 transition-all duration-300" onError={(e)=>{e.target.src='https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=500'}} />
               </div>
 
               <div className="space-y-1">
-                <h3 className="text-base font-black text-slate-900 group-hover:text-blue-600 transition-all">{t.name}</h3>
+                <h3 className="text-base font-black text-slate-900 group-hover:text-blue-600 transition-all">{t.name || t.tutorName}</h3>
                 <p className="text-xs font-black text-blue-600">{t.language || t.subject}</p>
                 <div className="flex items-center gap-1 text-amber-500 text-xs font-black mt-1">
                   <Star className="w-3.5 h-3.5 fill-current" /> 4.9 <span className="text-slate-400 font-bold">({t.reviews || 112})</span>
@@ -176,7 +178,7 @@ const Home = ({ user, setActiveTab, setRedirectTarget, setAuthMode }) => {
               </div>
 
               <div className="flex justify-between items-center border-t border-slate-100 pt-3 mt-2">
-                <span className="text-xl font-black text-slate-900">${t.price}<span className="text-xs text-slate-500 font-bold">/hr</span></span>
+                <span className="text-xl font-black text-slate-900">${t.price || t.hourlyFee}<span className="text-xs text-slate-500 font-bold">/hr</span></span>
                 <button className="px-4 py-2 bg-blue-600 text-white font-black text-xs rounded-xl hover:bg-blue-700 cursor-pointer shadow">
                   Book Session
                 </button>
@@ -186,6 +188,7 @@ const Home = ({ user, setActiveTab, setRedirectTarget, setAuthMode }) => {
         </div>
       </div>
 
+      {/* 🛠️ How MediQueue Works */}
       <div className="max-w-7xl mx-auto px-4 md:px-8 space-y-10">
         <div className="text-center space-y-1">
           <span className="text-[11px] font-black text-blue-600 uppercase tracking-widest">
@@ -236,6 +239,7 @@ const Home = ({ user, setActiveTab, setRedirectTarget, setAuthMode }) => {
         </div>
       </div>
 
+      {/* 💬 Testimonials */}
       <div className="max-w-7xl mx-auto px-4 md:px-8 space-y-10">
         <div className="text-center space-y-1">
           <span className="text-[11px] font-black text-blue-600 uppercase tracking-widest">
@@ -270,6 +274,7 @@ const Home = ({ user, setActiveTab, setRedirectTarget, setAuthMode }) => {
         </div>
       </div>
 
+      {/* 📊 Stats Counter Bar */}
       <div className="bg-blue-600 py-12 text-white">
         <div className="max-w-7xl mx-auto px-4 md:px-8 grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
           <div className="space-y-1">
